@@ -1,0 +1,2425 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Advanced Pong HTML Game</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!--
+    BUG FIXES APPLIED:
+    ✓ Fixed wall bounce prediction logic in predictBallHit()
+    ✓ Fixed inconsistent ballRadius usage in collision handlers
+    ✓ Fixed ball reset to properly clear trail and reset velocity
+    ✓ Added collision prevention to avoid ball getting stuck in paddles
+    ✓ Added velocity clamping to prevent extreme speeds
+    
+    IMPROVEMENTS ADDED:
+    ✓ Score tracking system (left/right scores displayed)
+    ✓ Gradient trail effect with fade-out opacity
+    ✓ Distance-based trail sampling for better performance
+    ✓ Keyboard event prevention (no page scrolling)
+    ✓ Random ball direction on reset
+    
+    SUGGESTIONS FOR FUTURE ENHANCEMENTS:
+    - Add sound effects for collisions and scoring
+    - Add pause functionality (P key)
+    - Add particle effects on ball-paddle collisions
+    - Add difficulty levels (adjust ball/paddle speed)
+    - Add mobile touch controls
+    - Add game over screen with restart option
+    - Add power-ups (speed boost, larger paddle, etc.)
+    - Add multiplayer networking support
+    - Add frame rate independence (delta time) for smoother gameplay
+    - Add ball spin visualization
+    - Add paddle hit sound effects based on hit position
+  -->
+  <style>
+  @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+  
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+  }
+
+  body {
+    background: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  canvas {
+    border: 3px solid #fff;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  }
+  
+  #gameModeSelect {
+    margin-bottom: 20px;
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    font-size: 18px;
+    padding: 10px 20px;
+    background: #2d5016;
+    color: white;
+    border: 2px solid white;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  #winPopup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #2d5016;
+    color: white;
+    padding: 40px;
+    border: 4px solid white;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 1000;
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+  }
+  
+  #winPopup h2 {
+    margin: 0 0 20px 0;
+    font-size: 36px;
+  }
+  
+  #winPopup button {
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    font-size: 20px;
+    padding: 15px 30px;
+    background: white;
+    color: #2d5016;
+    border: 2px solid white;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  
+  #winPopup button:hover {
+    background: #f0f0f0;
+  }
+  
+  #difficultySelect {
+    margin-left: 20px;
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    font-size: 18px;
+    padding: 10px 20px;
+    background: #2d5016;
+    color: white;
+    border: 2px solid white;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .gameControls {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  #instructionsBtn {
+    margin-left: 20px;
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    font-size: 18px;
+    padding: 10px 20px;
+    background: #2d5016;
+    color: white;
+    border: 2px solid white;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  #instructionsBtn:hover {
+    background: #3a6a1f;
+  }
+  
+  #instructionsModal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #2d5016;
+    color: white;
+    padding: 40px;
+    border: 4px solid white;
+    border-radius: 10px;
+    z-index: 1001;
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  #instructionsModal h2 {
+    margin-top: 0;
+    font-size: 32px;
+  }
+  
+  #instructionsModal h3 {
+    font-size: 24px;
+    margin-top: 20px;
+  }
+  
+  #instructionsModal p {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  
+  #instructionsModal ul {
+    font-size: 18px;
+    line-height: 1.8;
+  }
+  
+  #instructionsModal button {
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    font-size: 20px;
+    padding: 15px 30px;
+    background: white;
+    color: #2d5016;
+    border: 2px solid white;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  
+  #instructionsModal button:hover {
+    background: #f0f0f0;
+  }
+  
+  /* Mobile Controls */
+  .mobile-controls {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 10px;
+    background: rgba(26, 26, 26, 0.9);
+    border-top: 2px solid white;
+  }
+  
+  .mobile-controls.mobile-active {
+    display: block;
+  }
+  
+  .mobile-control-row {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 10px;
+    gap: 10px;
+  }
+  
+  .mobile-control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .mobile-control-group label {
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .mobile-btn {
+    font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
+    font-size: 16px;
+    padding: 15px 20px;
+    background: #2d5016;
+    color: white;
+    border: 2px solid white;
+    border-radius: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    min-width: 70px;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  
+  .mobile-btn:active {
+    background: #3a6a1f;
+    transform: scale(0.95);
+  }
+  
+  .mobile-btn.ability-btn {
+    background: #4a2d6a;
+  }
+  
+  .mobile-btn.ability-btn:active {
+    background: #5a3d7a;
+  }
+  
+  .mobile-btn.ability-redirect {
+    background: #6a2d4a;
+  }
+  
+  .mobile-btn.ability-redirect:active {
+    background: #7a3d5a;
+  }
+  
+  .mobile-btn.ability-slow {
+    background: #2d4a6a;
+  }
+  
+  .mobile-btn.ability-slow:active {
+    background: #3d5a7a;
+  }
+  
+  .mobile-btn.ability-boost {
+    background: #6a2d2d;
+  }
+  
+  .mobile-btn.ability-boost:active {
+    background: #7a3d3d;
+  }
+  
+  @media (max-width: 768px) {
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    body {
+      padding: 10px;
+    }
+  }
+  </style>
+</head>
+<body>
+<div class="gameControls">
+  <select id="gameModeSelect">
+    <option value="standard">Standard Mode (First to 10)</option>
+    <option value="timer">Timer Mode (1 Minute)</option>
+    <option value="ai">AI Mode</option>
+    <option value="online">Online Matchmaking</option>
+  </select>
+  <select id="difficultySelect" style="display: none;">
+    <option value="easy">Easy</option>
+    <option value="normal" selected>Normal</option>
+    <option value="hard">Hard</option>
+  </select>
+  <button id="instructionsBtn" onclick="toggleInstructions()">Instructions</button>
+</div>
+
+<!-- Online Matchmaking UI -->
+<div id="matchmakingUI" style="display: none; text-align: center; margin-bottom: 20px;">
+  <div id="connectionStatus" style="color: #888; margin-bottom: 10px; font-size: 16px;">
+    Disconnected
+  </div>
+  <button id="findMatchBtn" onclick="startMatchmaking()" style="font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif; font-size: 18px; padding: 15px 30px; background: #2d5016; color: white; border: 2px solid white; border-radius: 5px; cursor: pointer;">
+    Find Match
+  </button>
+  <button id="cancelMatchBtn" onclick="cancelMatchmaking()" style="display: none; font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif; font-size: 18px; padding: 15px 30px; background: #6a2d2d; color: white; border: 2px solid white; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+    Cancel
+  </button>
+  <div id="matchmakingStatus" style="color: white; margin-top: 10px; font-size: 18px;"></div>
+</div>
+
+<div id="instructionsModal">
+  <h2>Game Instructions</h2>
+  
+  <h3>Controls</h3>
+  <ul>
+    <li><strong>Player 1 (Left):</strong> W (up) / S (down) to move paddle</li>
+    <li><strong>Player 2 (Right):</strong> ↑ (up) / ↓ (down) to move paddle</li>
+    <li><strong>Player 1 Slow Ability:</strong> Press A to activate</li>
+    <li><strong>Player 1 Speed Boost:</strong> Press D to activate</li>
+    <li><strong>Player 1 Redirect:</strong> Press E to activate</li>
+    <li><strong>Player 2 Slow Ability:</strong> Press ← (Left Arrow) to activate</li>
+    <li><strong>Player 2 Speed Boost:</strong> Press → (Right Arrow) to activate</li>
+    <li><strong>Player 2 Redirect:</strong> Press Shift to activate</li>
+  </ul>
+  
+  <h3>Game Modes</h3>
+  <ul>
+    <li><strong>Standard Mode:</strong> First player to reach 10 points wins</li>
+    <li><strong>Timer Mode:</strong> Play for 1 minute, highest score wins</li>
+    <li><strong>AI Mode:</strong> Play against AI with 3 difficulty levels</li>
+  </ul>
+  
+  <h3>Abilities</h3>
+  <ul>
+    <li><strong>Slow Ability (A / Left Arrow):</strong> Slows ball to 60% speed when it enters your side. Blue overlay shows when active. 5 second duration, 15 second cooldown.</li>
+    <li><strong>Speed Boost Ability (D / Right Arrow):</strong> Any ball you hit speeds up to 175% for opponent. Paddle glows neon red when active. Speed boost is removed immediately when ball is hit or scores. 5 second duration, 15 second cooldown.</li>
+    <li><strong>Redirect Ability (E / Shift):</strong> When activated while ball is going towards opponent, ball flashes black for 0.5 seconds and randomly launches in a different angle (not towards activator). When activated while ball is towards you, launches ball to the other side. 20 second cooldown. Plays ability activation sound.</li>
+    <li><strong>Special Interactions:</strong> If both players hit ball with abilities active, speed boost is removed when outgoing. Opponent hitting sped-up ball removes the speed boost immediately.</li>
+    <li><strong>Note:</strong> AI can use all abilities automatically when available.</li>
+  </ul>
+  
+  <h3>AI Difficulty Levels</h3>
+  <ul>
+    <li><strong>Easy:</strong> Ball at 70% speed, AI at 60% speed</li>
+    <li><strong>Normal:</strong> Standard speeds, AI at 80% speed</li>
+    <li><strong>Hard:</strong> Ball at 125% speed, AI at 100% speed</li>
+  </ul>
+  
+  <button onclick="toggleInstructions()">Close</button>
+</div>
+<canvas width="750" height="585" id="game"></canvas>
+<div id="winPopup">
+  <h2 id="winMessage"></h2>
+  <button onclick="restartGame()">Restart Game</button>
+</div>
+<audio id="paddleHitSound" preload="auto">
+  <source src="long-medium-swish-44324.mp3" type="audio/mpeg">
+</audio>
+<audio id="scoreSound" preload="auto">
+  <source src="classic-game-action-positive-5-224402.mp3" type="audio/mpeg">
+</audio>
+<audio id="abilityActivationSound" preload="auto">
+  <source src="Grand_Aura_Activation.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Mobile Controls -->
+<div id="mobileControls" class="mobile-controls">
+  <!-- Player 1 Controls -->
+  <div class="mobile-control-row">
+    <div class="mobile-control-group">
+      <label>P1 Up</label>
+      <button class="mobile-btn" id="p1Up" ontouchstart="handleMobileTouch('p1Up', true)" ontouchend="handleMobileTouch('p1Up', false)">↑</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P1 Down</label>
+      <button class="mobile-btn" id="p1Down" ontouchstart="handleMobileTouch('p1Down', true)" ontouchend="handleMobileTouch('p1Down', false)">↓</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P1 Slow</label>
+      <button class="mobile-btn ability-btn ability-slow" id="p1Slow" ontouchstart="handleMobileAbility('p1Slow')">A</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P1 Boost</label>
+      <button class="mobile-btn ability-btn ability-boost" id="p1Boost" ontouchstart="handleMobileAbility('p1Boost')">D</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P1 Redirect</label>
+      <button class="mobile-btn ability-btn ability-redirect" id="p1Redirect" ontouchstart="handleMobileAbility('p1Redirect')">E</button>
+    </div>
+  </div>
+  
+  <!-- Player 2 Controls -->
+  <div class="mobile-control-row" id="p2ControlsRow">
+    <div class="mobile-control-group">
+      <label>P2 Up</label>
+      <button class="mobile-btn" id="p2Up" ontouchstart="handleMobileTouch('p2Up', true)" ontouchend="handleMobileTouch('p2Up', false)">↑</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P2 Down</label>
+      <button class="mobile-btn" id="p2Down" ontouchstart="handleMobileTouch('p2Down', true)" ontouchend="handleMobileTouch('p2Down', false)">↓</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P2 Slow</label>
+      <button class="mobile-btn ability-btn ability-slow" id="p2Slow" ontouchstart="handleMobileAbility('p2Slow')">←</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P2 Boost</label>
+      <button class="mobile-btn ability-btn ability-boost" id="p2Boost" ontouchstart="handleMobileAbility('p2Boost')">→</button>
+    </div>
+    <div class="mobile-control-group">
+      <label>P2 Redirect</label>
+      <button class="mobile-btn ability-btn ability-redirect" id="p2Redirect" ontouchstart="handleMobileAbility('p2Redirect')">Shift</button>
+    </div>
+  </div>
+</div>
+
+<!-- Socket.io Client Library -->
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+<script>
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+const paddleHitSound = document.getElementById('paddleHitSound');
+
+// Mobile detection
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 768 && 'ontouchstart' in window);
+}
+
+const isMobile = isMobileDevice();
+const mobileControls = document.getElementById('mobileControls');
+const p2ControlsRow = document.getElementById('p2ControlsRow');
+
+// Show/hide mobile controls based on device
+if (isMobile) {
+  if (mobileControls) mobileControls.classList.add('mobile-active');
+} else {
+  if (mobileControls) mobileControls.classList.remove('mobile-active');
+}
+
+// Mobile touch handlers
+const mobileTouchState = {
+  p1Up: false,
+  p1Down: false,
+  p2Up: false,
+  p2Down: false
+};
+
+function handleMobileTouch(control, isPressed) {
+  if (gameOver) return;
+  
+  mobileTouchState[control] = isPressed;
+  
+  // Update paddle movement based on touch state
+  if (control === 'p1Up') {
+    leftPaddle.dy = isPressed ? -paddleSpeed : (mobileTouchState.p1Down ? paddleSpeed : 0);
+  } else if (control === 'p1Down') {
+    leftPaddle.dy = isPressed ? paddleSpeed : (mobileTouchState.p1Up ? -paddleSpeed : 0);
+  } else if (control === 'p2Up' && !aiMode) {
+    rightPaddle.dy = isPressed ? -paddleSpeed : (mobileTouchState.p2Down ? paddleSpeed : 0);
+  } else if (control === 'p2Down' && !aiMode) {
+    rightPaddle.dy = isPressed ? paddleSpeed : (mobileTouchState.p2Up ? -paddleSpeed : 0);
+  }
+}
+
+function handleMobileAbility(ability) {
+  if (gameOver) return;
+  
+  if (ability === 'p1Slow') {
+    activateSlowAbility('player1');
+  } else if (ability === 'p1Boost') {
+    activateSpeedBoostAbility('player1');
+  } else if (ability === 'p1Redirect') {
+    activateRedirectAbility('player1');
+  } else if (ability === 'p2Slow' && !aiMode) {
+    activateSlowAbility('player2');
+  } else if (ability === 'p2Boost' && !aiMode) {
+    activateSpeedBoostAbility('player2');
+  } else if (ability === 'p2Redirect' && !aiMode) {
+    activateRedirectAbility('player2');
+  }
+}
+
+// Hide P2 controls in AI mode
+function updateMobileControlsVisibility() {
+  if (p2ControlsRow) {
+    p2ControlsRow.style.display = aiMode ? 'none' : 'flex';
+  }
+}
+// Audio offset to skip silence at the start (adjust this value if sound timing is off)
+// Common values: 0.1-0.3 seconds depending on the MP3 file
+const paddleHitSoundOffset = 0.15; // seconds to skip at start
+
+// Ensure audio is ready to play immediately
+if (paddleHitSound) {
+  paddleHitSound.volume = 0.7; // Set volume
+  paddleHitSound.preload = 'auto';
+  paddleHitSound.load(); // Force load
+  
+  // Once audio is loaded, it's ready for immediate playback
+  paddleHitSound.addEventListener('canplaythrough', () => {
+    // Audio is ready to play
+  }, { once: true });
+}
+const grid = 15;
+const paddleHeight = grid * 5; // 80
+const maxPaddleY = canvas.height - grid - paddleHeight;
+
+// Base speeds (will be modified by difficulty)
+const basePaddleSpeed = 6;
+const baseBallSpeed = 5;
+
+var paddleSpeed = basePaddleSpeed;
+var ballSpeed = baseBallSpeed;
+
+// Game mode and state
+let gameMode = 'standard'; // 'standard', 'timer', or 'ai'
+let difficulty = 'normal'; // 'easy', 'normal', or 'hard'
+let gameOver = false;
+let timerModeTimeLeft = 60; // 1 minute in seconds
+let timerInterval = null;
+let aiMode = false;
+let onlineMode = false;
+
+// Online matchmaking variables
+let socket = null;
+let isConnected = false;
+let isInQueue = false;
+let roomId = null;
+let playerSide = null; // 'left' or 'right'
+let isHost = false; // Host controls the ball physics
+let serverUrl = 'http://localhost:3000'; // Change this to your server URL
+
+// Initialize Socket.io connection
+function initSocket() {
+  try {
+    socket = io(serverUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
+    });
+
+    socket.on('connect', () => {
+      isConnected = true;
+      updateConnectionStatus('Connected', '#00ff00');
+      console.log('Connected to server');
+    });
+
+    socket.on('disconnect', () => {
+      isConnected = false;
+      updateConnectionStatus('Disconnected', '#888');
+      console.log('Disconnected from server');
+      if (onlineMode) {
+        handleOnlineDisconnect();
+      }
+    });
+
+    socket.on('matchFound', (data) => {
+      roomId = data.roomId;
+      playerSide = data.side;
+      isHost = data.isHost;
+      isInQueue = false;
+      onlineMode = true;
+      updateMatchmakingStatus('Match found! Starting game...', '#00ff00');
+      document.getElementById('findMatchBtn').style.display = 'none';
+      document.getElementById('cancelMatchBtn').style.display = 'none';
+      
+      // Reset game state for online match
+      restartGame();
+      
+      setTimeout(() => {
+        updateMatchmakingStatus('');
+      }, 2000);
+    });
+
+    socket.on('opponentLeft', () => {
+      updateMatchmakingStatus('Opponent disconnected. Waiting for reconnection...', '#ffaa00');
+    });
+
+    socket.on('gameState', (state) => {
+      if (onlineMode && !isHost) {
+        // Update game state from server (for non-host player)
+        syncGameState(state);
+      }
+    });
+
+    socket.on('paddleUpdate', (data) => {
+      if (onlineMode && data.side !== playerSide) {
+        // Update opponent's paddle position
+        if (data.side === 'left') {
+          leftPaddle.y = data.y;
+          leftPaddle.dy = data.dy;
+        } else {
+          rightPaddle.y = data.y;
+          rightPaddle.dy = data.dy;
+        }
+      }
+    });
+
+    socket.on('abilityUsed', (data) => {
+      if (onlineMode && data.side !== playerSide) {
+        // Opponent used ability
+        if (data.ability === 'slow') {
+          activateSlowAbility(data.side === 'left' ? 'player1' : 'player2');
+        } else if (data.ability === 'boost') {
+          activateSpeedBoostAbility(data.side === 'left' ? 'player1' : 'player2');
+        } else if (data.ability === 'redirect') {
+          activateRedirectAbility(data.side === 'left' ? 'player1' : 'player2');
+        }
+      }
+    });
+
+    socket.on('score', (data) => {
+      if (onlineMode) {
+        scores.left = data.leftScore;
+        scores.right = data.rightScore;
+        checkWinCondition();
+      }
+    });
+
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+      updateMatchmakingStatus('Error: ' + error, '#ff0000');
+    });
+
+  } catch (error) {
+    console.error('Failed to initialize socket:', error);
+    updateConnectionStatus('Connection Failed', '#ff0000');
+  }
+}
+
+// Update connection status UI
+function updateConnectionStatus(status, color) {
+  const statusEl = document.getElementById('connectionStatus');
+  if (statusEl) {
+    statusEl.textContent = status;
+    statusEl.style.color = color || '#888';
+  }
+}
+
+// Update matchmaking status UI
+function updateMatchmakingStatus(status, color) {
+  const statusEl = document.getElementById('matchmakingStatus');
+  if (statusEl) {
+    statusEl.textContent = status;
+    statusEl.style.color = color || '#fff';
+  }
+}
+
+// Start matchmaking
+function startMatchmaking() {
+  if (!isConnected) {
+    initSocket();
+    setTimeout(() => {
+      if (isConnected) {
+        startMatchmaking();
+      } else {
+        updateMatchmakingStatus('Failed to connect to server', '#ff0000');
+      }
+    }, 1000);
+    return;
+  }
+
+  if (isInQueue) return;
+
+  isInQueue = true;
+  socket.emit('joinQueue');
+  document.getElementById('findMatchBtn').style.display = 'none';
+  document.getElementById('cancelMatchBtn').style.display = 'inline-block';
+  updateMatchmakingStatus('Searching for opponent...', '#ffff00');
+}
+
+// Cancel matchmaking
+function cancelMatchmaking() {
+  if (socket && isInQueue) {
+    socket.emit('leaveQueue');
+    isInQueue = false;
+    document.getElementById('findMatchBtn').style.display = 'inline-block';
+    document.getElementById('cancelMatchBtn').style.display = 'none';
+    updateMatchmakingStatus('', '');
+  }
+}
+
+// Handle online disconnect
+function handleOnlineDisconnect() {
+  onlineMode = false;
+  roomId = null;
+  playerSide = null;
+  isHost = false;
+  isInQueue = false;
+  gameOver = true;
+  updateMatchmakingStatus('Connection lost. Please try again.', '#ff0000');
+  document.getElementById('findMatchBtn').style.display = 'inline-block';
+  document.getElementById('cancelMatchBtn').style.display = 'none';
+}
+
+// Sync game state from server
+function syncGameState(state) {
+  // Ball state
+  if (state.ball) {
+    ball.x = state.ball.x;
+    ball.y = state.ball.y;
+    ball.dx = state.ball.dx;
+    ball.dy = state.ball.dy;
+  }
+
+  // Paddle positions
+  if (state.leftPaddle) {
+    leftPaddle.y = state.leftPaddle.y;
+  }
+  if (state.rightPaddle) {
+    rightPaddle.y = state.rightPaddle.y;
+  }
+
+  // Scores
+  if (state.scores) {
+    scores.left = state.scores.left;
+    scores.right = state.scores.right;
+  }
+
+  // Abilities
+  if (state.abilities) {
+    if (state.abilities.player1) {
+      Object.assign(abilities.player1, state.abilities.player1);
+    }
+    if (state.abilities.player2) {
+      Object.assign(abilities.player2, state.abilities.player2);
+    }
+  }
+
+  // Speed boost
+  if (state.ballSpeedBoost) {
+    ballSpeedBoost.active = state.ballSpeedBoost.active;
+    ballSpeedBoost.appliedBy = state.ballSpeedBoost.appliedBy;
+  }
+}
+
+// Send paddle update to server
+function sendPaddleUpdate() {
+  if (socket && onlineMode && isConnected) {
+    socket.emit('paddleUpdate', {
+      roomId: roomId,
+      side: playerSide,
+      y: playerSide === 'left' ? leftPaddle.y : rightPaddle.y,
+      dy: playerSide === 'left' ? leftPaddle.dy : rightPaddle.dy
+    });
+  }
+}
+
+// Send game state to server (host only)
+function sendGameState() {
+  if (socket && onlineMode && isConnected && isHost) {
+    socket.emit('gameState', {
+      roomId: roomId,
+      ball: {
+        x: ball.x,
+        y: ball.y,
+        dx: ball.dx,
+        dy: ball.dy
+      },
+      leftPaddle: {
+        y: leftPaddle.y
+      },
+      rightPaddle: {
+        y: rightPaddle.y
+      },
+      scores: {
+        left: scores.left,
+        right: scores.right
+      },
+      abilities: {
+        player1: abilities.player1,
+        player2: abilities.player2
+      },
+      ballSpeedBoost: {
+        active: ballSpeedBoost.active,
+        appliedBy: ballSpeedBoost.appliedBy
+      }
+    });
+  }
+}
+
+// Ability system
+const abilities = {
+  player1: {
+    slowActive: false,
+    slowCooldown: 0,
+    slowDuration: 0,
+    slowFadeOpacity: 0,
+    speedBoostActive: false,
+    speedBoostCooldown: 0,
+    speedBoostDuration: 0,
+    speedBoostGlow: 0,
+    redirectActive: false,
+    redirectCooldown: 0,
+    redirectFlashTime: 0
+  },
+  player2: {
+    slowActive: false,
+    slowCooldown: 0,
+    slowDuration: 0,
+    slowFadeOpacity: 0,
+    speedBoostActive: false,
+    speedBoostCooldown: 0,
+    speedBoostDuration: 0,
+    speedBoostGlow: 0,
+    redirectActive: false,
+    redirectCooldown: 0,
+    redirectFlashTime: 0
+  }
+};
+const ABILITY_DURATION = 5000; // 5 seconds in milliseconds
+const ABILITY_COOLDOWN = 15000; // 15 seconds in milliseconds
+const ABILITY_REDIRECT_COOLDOWN = 20000; // 20 seconds in milliseconds
+const ABILITY_SLOW_FACTOR = 0.6; // 60% speed
+const ABILITY_SPEED_BOOST_FACTOR = 1.75; // 175% speed
+const ABILITY_REDIRECT_FLASH_DURATION = 500; // 0.5 seconds in milliseconds
+
+// Track ball speed boost state
+let ballSpeedBoost = {
+  active: false,
+  appliedBy: null // 'player1' or 'player2'
+};
+
+// Initialize ability activation sound
+const abilityActivationSound = document.getElementById('abilityActivationSound');
+if (abilityActivationSound) {
+  abilityActivationSound.volume = 0.7;
+  abilityActivationSound.load();
+}
+
+// Score tracking
+const scores = {
+  left: 0,
+  right: 0
+};
+
+// Audio elements
+const scoreSound = document.getElementById('scoreSound');
+if (scoreSound) {
+  scoreSound.volume = 0.7;
+  scoreSound.load();
+}
+
+const leftPaddle = {
+  // start in the middle of the game on the left side
+  x: grid * 2,
+  y: canvas.height / 2 - paddleHeight / 2,
+  width: grid,
+  height: paddleHeight,
+
+  // paddle velocity
+  dy: 0,
+  
+  // rotation properties
+  angle: 0,           // current rotation angle in radians
+  angularVelocity: 0, // angular velocity (radians per frame)
+  pivotY: 0,          // pivot point Y position (relative to paddle center)
+  targetAngle: 0,    // target angle to swing towards
+  damping: 0.92,     // damping factor for angular velocity
+  hasSwung: false,   // track if paddle has swung for current approach
+  swingComplete: false // track if swing motion is complete
+};
+const rightPaddle = {
+  // start in the middle of the game on the right side
+  x: canvas.width - grid * 3,
+  y: canvas.height / 2 - paddleHeight / 2,
+  width: grid,
+  height: paddleHeight,
+
+  // paddle velocity
+  dy: 0,
+  
+  // rotation properties
+  angle: 0,           // current rotation angle in radians
+  angularVelocity: 0, // angular velocity (radians per frame)
+  pivotY: 0,          // pivot point Y position (relative to paddle center)
+  targetAngle: 0,    // target angle to swing towards
+  damping: 0.92,     // damping factor for angular velocity
+  hasSwung: false,   // track if paddle has swung for current approach
+  swingComplete: false // track if swing motion is complete
+};
+const ball = {
+  // start in the middle of the game
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  width: grid,
+  height: grid,
+
+  // keep track of when need to reset the ball position
+  resetting: false,
+
+  // ball velocity (start going to the top-right corner)
+  dx: ballSpeed,
+  dy: -ballSpeed,
+  
+  // trail for wind effect
+  trail: [],
+  maxTrailLength: 15, // maximum number of trail segments
+  
+  // collision tracking for sound
+  lastCollisionFrame: -1
+};
+
+// predict where ball will hit paddle based on trajectory
+function predictBallHit(ball, paddle) {
+  if (ball.resetting) return null;
+  
+  // Determine which paddle we're checking
+  const isLeftPaddle = paddle === leftPaddle;
+  const paddleX = isLeftPaddle ? paddle.x + paddle.width : paddle.x;
+  
+  // Check if ball is in front of the paddle (not behind it)
+  if (isLeftPaddle) {
+    // For left paddle: ball must be to the right of the paddle (in front)
+    if (ball.x < paddle.x + paddle.width) return null; // Ball is behind left paddle
+    if (ball.dx > 0) return null; // Ball moving away from left paddle
+  } else {
+    // For right paddle: ball must be to the left of the paddle (in front)
+    if (ball.x > paddle.x) return null; // Ball is behind right paddle
+    if (ball.dx < 0) return null; // Ball moving away from right paddle
+  }
+  
+  // Safety check: avoid division by zero
+  if (Math.abs(ball.dx) < 0.01) return null;
+  
+  // Calculate time until ball reaches paddle X position
+  const distanceToPaddle = Math.abs(ball.x - paddleX);
+  if (distanceToPaddle === 0) return null;
+  
+  const timeToHit = distanceToPaddle / Math.abs(ball.dx);
+  if (!isFinite(timeToHit) || timeToHit < 0) return null;
+  
+  // Predict ball Y position at hit time
+  const ballRadius = ball.width / 2;
+  let predictedY = ball.y + ball.dy * timeToHit;
+  let currentY = ball.y;
+  let remainingTime = timeToHit;
+  let bounceCount = 0;
+  const maxBounces = 10; // Prevent infinite loops
+  
+  // Account for wall bounces
+  let currentDy = ball.dy; // Track velocity changes due to bounces
+  while ((predictedY < grid + ballRadius || predictedY > canvas.height - grid - ballRadius) && bounceCount < maxBounces) {
+    if (predictedY < grid + ballRadius) {
+      // Ball will hit top wall
+      if (Math.abs(currentDy) < 0.01) break; // Avoid division by zero
+      const timeToTopWall = (grid + ballRadius - currentY) / currentDy;
+      if (timeToTopWall <= 0 || !isFinite(timeToTopWall)) break;
+      remainingTime -= timeToTopWall;
+      if (remainingTime <= 0) break;
+      currentY = grid + ballRadius;
+      currentDy = -currentDy; // Velocity reverses after bounce
+      predictedY = currentY + currentDy * remainingTime;
+    } else {
+      // Ball will hit bottom wall
+      if (Math.abs(currentDy) < 0.01) break; // Avoid division by zero
+      const timeToBottomWall = (canvas.height - grid - ballRadius - currentY) / currentDy;
+      if (timeToBottomWall <= 0 || !isFinite(timeToBottomWall)) break;
+      remainingTime -= timeToBottomWall;
+      if (remainingTime <= 0) break;
+      currentY = canvas.height - grid - ballRadius;
+      currentDy = -currentDy; // Velocity reverses after bounce
+      predictedY = currentY + currentDy * remainingTime;
+    }
+    bounceCount++;
+  }
+  
+  // Clamp predicted Y to valid range
+  predictedY = Math.max(grid + ballRadius, Math.min(canvas.height - grid - ballRadius, predictedY));
+  
+  // Check if predicted hit is within paddle range
+  const paddleCenterY = paddle.y + paddle.height / 2;
+  const paddleTop = paddle.y;
+  const paddleBottom = paddle.y + paddle.height;
+  
+  if (predictedY >= paddleTop && predictedY <= paddleBottom) {
+    return {
+      y: predictedY,
+      time: timeToHit,
+      relativeY: predictedY - paddleCenterY // relative to paddle center
+    };
+  }
+  
+  return null;
+}
+
+// draw a rotated paddle (table tennis racket style)
+function drawRotatedPaddle(paddle, player) {
+  context.save();
+  
+  // Calculate pivot point in world coordinates
+  // Pivot is along the paddle's center line, at the predicted hit point
+  const paddleCenterX = paddle.x + paddle.width / 2;
+  const paddleCenterY = paddle.y + paddle.height / 2;
+  const pivotX = paddleCenterX;
+  const pivotY = paddleCenterY + paddle.pivotY;
+  
+  // Translate to pivot point, rotate, then translate back
+  context.translate(pivotX, pivotY);
+  context.rotate(paddle.angle);
+  context.translate(-pivotX, -pivotY);
+  
+  // Draw the paddle rectangle centered on its original position
+  const halfWidth = paddle.width / 2;
+  const halfHeight = paddle.height / 2;
+  const paddleX = paddleCenterX - halfWidth;
+  const paddleY = paddleCenterY - halfHeight;
+  
+  // Check for speed boost glow effect
+  const ability = player ? abilities[player] : null;
+  const hasSpeedBoost = ability && ability.speedBoostGlow > 0;
+  
+  // Draw bright red glowing aura if speed boost is active
+  if (hasSpeedBoost) {
+    const glowIntensity = ability.speedBoostGlow;
+    // Multiple layers for intense glow effect
+    context.shadowBlur = 40 * glowIntensity;
+    context.shadowColor = `rgba(255, 0, 0, ${1.0 * glowIntensity})`;
+    context.fillStyle = `rgba(255, 0, 0, ${0.8 * glowIntensity})`;
+    context.fillRect(paddleX - 5, paddleY - 5, paddle.width + 10, paddle.height + 10);
+    
+    // Additional outer glow layer
+    context.shadowBlur = 60 * glowIntensity;
+    context.shadowColor = `rgba(255, 50, 50, ${0.6 * glowIntensity})`;
+    context.fillStyle = `rgba(255, 0, 0, ${0.4 * glowIntensity})`;
+    context.fillRect(paddleX - 8, paddleY - 8, paddle.width + 16, paddle.height + 16);
+    
+    context.shadowBlur = 0;
+  }
+  
+  // Draw paddle shadow for depth
+  context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  context.fillRect(paddleX + 2, paddleY + 2, paddle.width, paddle.height);
+  
+  // Draw main paddle body (red/black like real table tennis paddles)
+  context.fillStyle = '#8B0000'; // Dark red
+  context.fillRect(paddleX, paddleY, paddle.width, paddle.height);
+  
+  // Add white border to paddle
+  context.strokeStyle = '#ffffff';
+  context.lineWidth = 1;
+  context.strokeRect(paddleX, paddleY, paddle.width, paddle.height);
+  
+  // Add subtle highlight
+  context.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  context.fillRect(paddleX, paddleY, paddle.width, paddle.height / 3);
+  
+  context.restore();
+}
+
+// update paddle swing mechanics based on ball trajectory
+function updatePaddleSwing(paddle, ball) {
+  const hit = predictBallHit(ball, paddle);
+  
+  // Check if ball is approaching
+  const isApproaching = hit && hit.time < 60;
+  
+  // Reset swing state if ball moves away (not approaching and was swinging)
+  if (!isApproaching && paddle.hasSwung && !paddle.swingComplete) {
+    paddle.swingComplete = true;
+    paddle.targetAngle = 0;
+  }
+  
+  if (isApproaching && !paddle.hasSwung) {
+    // Set pivot point at predicted hit location
+    paddle.pivotY = hit.relativeY;
+    
+    // Calculate target angle based on ball's approach angle
+    const ballAngle = Math.atan2(ball.dy, Math.abs(ball.dx));
+    const maxSwingAngle = Math.PI / 3; // 60 degrees max swing
+    
+    // Target angle: swing towards where ball is coming from
+    paddle.targetAngle = Math.max(-maxSwingAngle, Math.min(maxSwingAngle, ballAngle * 0.6));
+    
+    // Mark that we've started swinging
+    paddle.hasSwung = true;
+    paddle.swingComplete = false;
+  }
+  
+  // If we've swung, check if swing is complete (reached target or passed it)
+  if (paddle.hasSwung && !paddle.swingComplete) {
+    const angleDiff = paddle.targetAngle - paddle.angle;
+    
+    // Check if we've reached or passed the target
+    if (Math.abs(angleDiff) < 0.05 && Math.abs(paddle.angularVelocity) < 0.02) {
+      paddle.swingComplete = true;
+      paddle.targetAngle = 0; // Start returning to neutral
+    } else {
+      // Continue swinging towards target
+      paddle.angularVelocity += angleDiff * 0.12;
+    }
+  } else if (paddle.swingComplete || !isApproaching) {
+    // Return to neutral position
+    paddle.targetAngle = 0;
+    const angleDiff = paddle.targetAngle - paddle.angle;
+    
+    // Strong return force to get back to neutral
+    paddle.angularVelocity += angleDiff * 0.15;
+    
+    // Reset swing state when back to neutral
+    if (Math.abs(paddle.angle) < 0.02 && Math.abs(paddle.angularVelocity) < 0.01) {
+      paddle.angle = 0;
+      paddle.angularVelocity = 0;
+      paddle.hasSwung = false;
+      paddle.swingComplete = false;
+      paddle.pivotY = 0;
+    }
+  }
+  
+  // Update angle with angular velocity
+  paddle.angle += paddle.angularVelocity;
+  
+  // Apply damping
+  paddle.angularVelocity *= paddle.damping;
+  
+  // Limit angular velocity
+  paddle.angularVelocity = Math.max(-0.4, Math.min(0.4, paddle.angularVelocity));
+}
+
+// check for collision between ball and rotated paddle
+function collidesWithRotatedPaddle(ball, paddle) {
+  const ballRadius = ball.width / 2;
+  const ballCenterX = ball.x + ballRadius;
+  const ballCenterY = ball.y + ballRadius;
+  
+  const paddleCenterX = paddle.x + paddle.width / 2;
+  const paddleCenterY = paddle.y + paddle.height / 2;
+  const pivotX = paddleCenterX;
+  const pivotY = paddleCenterY + paddle.pivotY;
+  
+  // Transform ball position to paddle's local coordinate system
+  // Rotate around the pivot point
+  const dx = ballCenterX - pivotX;
+  const dy = ballCenterY - pivotY;
+  
+  const cos = Math.cos(-paddle.angle);
+  const sin = Math.sin(-paddle.angle);
+  
+  // Rotate ball position around pivot
+  const localX = dx * cos - dy * sin;
+  const localY = dx * sin + dy * cos;
+  
+  // Paddle center relative to pivot (before rotation)
+  const paddleRelX = paddleCenterX - pivotX;
+  const paddleRelY = paddleCenterY - pivotY;
+  
+  // Rotate paddle center around pivot
+  const paddleLocalX = paddleRelX * cos - paddleRelY * sin;
+  const paddleLocalY = paddleRelX * sin + paddleRelY * cos;
+  
+  // Check collision: ball position relative to rotated paddle center
+  const relX = localX - paddleLocalX;
+  const relY = localY - paddleLocalY;
+  
+  const halfWidth = paddle.width / 2;
+  const halfHeight = paddle.height / 2;
+  
+  return Math.abs(relX) < halfWidth + ballRadius &&
+         Math.abs(relY) < halfHeight + ballRadius;
+}
+
+// check for collision between two objects using axis-aligned bounding box (AABB)
+// @see https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+function collides(obj1, obj2) {
+  return obj1.x < obj2.x + obj2.width &&
+         obj1.x + obj1.width > obj2.x &&
+         obj1.y < obj2.y + obj2.height &&
+         obj1.y + obj1.height > obj2.y;
+}
+
+// AI controller for right paddle (player controls left paddle in AI mode)
+function updateAIPaddle() {
+  if (!aiMode || gameOver) return;
+  
+  const aiPaddle = rightPaddle;
+  const ballRadius = ball.width / 2;
+  const ballCenterX = ball.x + ballRadius;
+  const ballCenterY = ball.y + ballRadius;
+  
+  // Always try to predict and position, don't reset to center unless ball is very far away
+  const paddleX = aiPaddle.x;
+  
+  // Only reset to center if ball is on the far left side and moving away
+  if (ballCenterX < canvas.width * 0.3 && ball.dx < 0) {
+    // Ball is far away on left side, slowly return to center
+    const centerY = canvas.height / 2 - aiPaddle.height / 2;
+    const distance = centerY - aiPaddle.y;
+    if (Math.abs(distance) > 10) {
+      aiPaddle.dy = distance * 0.05; // Very slow return
+    } else {
+      aiPaddle.dy = 0;
+    }
+    return;
+  }
+  
+  // Predict where ball will be when it reaches the paddle
+  if (ball.dx > 0 || ballCenterX > canvas.width * 0.5) {
+    // Ball coming towards AI or on AI's side
+    const distanceToPaddle = Math.abs(paddleX - ballCenterX);
+    
+    if (distanceToPaddle > 0 && Math.abs(ball.dx) > 0.01) {
+      const timeToReach = distanceToPaddle / Math.abs(ball.dx);
+      let predictedY = ballCenterY + ball.dy * timeToReach;
+      
+      // Account for wall bounces
+      let currentY = ballCenterY;
+      let remainingTime = timeToReach;
+      let bounceCount = 0;
+      const maxBounces = 10;
+      let currentDy = ball.dy;
+      
+      while ((predictedY < grid + ballRadius || predictedY > canvas.height - grid - ballRadius) && bounceCount < maxBounces) {
+        if (predictedY < grid + ballRadius) {
+          if (Math.abs(currentDy) < 0.01) break;
+          const timeToWall = (grid + ballRadius - currentY) / currentDy;
+          if (timeToWall <= 0 || !isFinite(timeToWall)) break;
+          remainingTime -= timeToWall;
+          if (remainingTime <= 0) break;
+          currentY = grid + ballRadius;
+          currentDy = -currentDy;
+          predictedY = currentY + currentDy * remainingTime;
+        } else {
+          if (Math.abs(currentDy) < 0.01) break;
+          const timeToWall = (canvas.height - grid - ballRadius - currentY) / currentDy;
+          if (timeToWall <= 0 || !isFinite(timeToWall)) break;
+          remainingTime -= timeToWall;
+          if (remainingTime <= 0) break;
+          currentY = canvas.height - grid - ballRadius;
+          currentDy = -currentDy;
+          predictedY = currentY + currentDy * remainingTime;
+        }
+        bounceCount++;
+      }
+      
+      // Clamp predicted Y
+      predictedY = Math.max(grid + ballRadius, Math.min(canvas.height - grid - ballRadius, predictedY));
+      
+      // Target: center the paddle on the predicted ball position
+      const paddleCenterY = aiPaddle.y + aiPaddle.height / 2;
+      const distance = predictedY - paddleCenterY;
+      
+      // Move towards target with AI speed (80% of normal speed)
+      const aiSpeed = paddleSpeed * 0.8;
+      if (Math.abs(distance) > 3) { // Smaller threshold for more responsive movement
+        if (distance > 0) {
+          aiPaddle.dy = Math.min(aiSpeed, Math.abs(distance) * 0.4); // Move down
+        } else {
+          aiPaddle.dy = Math.max(-aiSpeed, -Math.abs(distance) * 0.4); // Move up
+        }
+      } else {
+        aiPaddle.dy = 0; // Close enough, stop moving
+      }
+    } else {
+      aiPaddle.dy = 0;
+    }
+  } else {
+    // Ball on left side moving left - maintain position, don't reset
+    aiPaddle.dy = 0;
+  }
+  
+  // AI ability usage
+  const now = Date.now();
+  const aiAbility = abilities.player2;
+  const courtCenter = canvas.width / 2;
+  const ballOnAISide = ballCenterX > courtCenter;
+  const ballGoingTowardsAI = ball.dx > 0;
+  
+  // Use slow ability when ball is approaching AI's side
+  if (aiAbility.slowCooldown <= now && !aiAbility.slowActive && ballOnAISide && ballGoingTowardsAI) {
+    activateSlowAbility('player2');
+  }
+  
+  // Use speed boost ability when ball is on opponent's side
+  if (aiAbility.speedBoostCooldown <= now && !aiAbility.speedBoostActive && !ballOnAISide && ball.dx < 0) {
+    activateSpeedBoostAbility('player2');
+  }
+  
+  // Use redirect ability when available and ball is approaching
+  if (aiAbility.redirectCooldown <= now && !aiAbility.redirectActive && ballGoingTowardsAI) {
+    activateRedirectAbility('player2');
+  }
+}
+
+// Handle scoring and check for win condition
+function handleScore(player) {
+  if (gameOver) return;
+  
+  // Remove speed boost when ball scores
+  ballSpeedBoost.active = false;
+  ballSpeedBoost.appliedBy = null;
+  
+  // Play scoring sound
+  if (scoreSound) {
+    scoreSound.currentTime = 0;
+    scoreSound.play().catch(e => console.log('Score sound failed:', e));
+  }
+  
+  // Update score
+  if (player === 'left') {
+    scores.left++;
+  } else {
+    scores.right++;
+  }
+  
+  // Send score update to server if in online mode (only host sends)
+  if (onlineMode && socket && isConnected && isHost) {
+    socket.emit('score', {
+      roomId: roomId,
+      leftScore: scores.left,
+      rightScore: scores.right
+    });
+  }
+  
+  // Check for win condition
+  checkWinCondition();
+}
+
+// Check win condition based on game mode
+function checkWinCondition() {
+  if (gameMode === 'standard' || gameMode === 'ai') {
+    // Standard/AI mode: first to 10 wins
+    if (scores.left >= 10) {
+      if (gameMode === 'ai') {
+        showWinPopup('You Win!');
+      } else {
+        showWinPopup('Player 1');
+      }
+    } else if (scores.right >= 10) {
+      if (gameMode === 'ai') {
+        showWinPopup('AI Wins!');
+      } else {
+        showWinPopup('Player 2');
+      }
+    }
+  }
+  // Timer mode win is checked when timer ends
+}
+
+// Show win popup
+function showWinPopup(winner) {
+  gameOver = true;
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  // Don't add " Wins!" if message already contains "Win"
+  const message = winner.includes('Win') ? winner : winner + ' Wins!';
+  document.getElementById('winMessage').textContent = message;
+  document.getElementById('winPopup').style.display = 'block';
+}
+
+// Start timer mode
+function startTimerMode() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+  timerModeTimeLeft = 60; // 1 minute
+  timerInterval = setInterval(() => {
+    if (!gameOver) {
+      timerModeTimeLeft--;
+      if (timerModeTimeLeft <= 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        // Determine winner in timer mode
+        if (scores.left > scores.right) {
+          showWinPopup('Player 1');
+        } else if (scores.right > scores.left) {
+          showWinPopup('Player 2');
+        } else {
+          showWinPopup('Tie Game!');
+        }
+      }
+    }
+  }, 1000);
+}
+
+// Restart game
+function restartGame() {
+  gameOver = false;
+  scores.left = 0;
+  scores.right = 0;
+  ball.resetting = false;
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  ball.trail = [];
+  ball.dx = (Math.random() > 0.5 ? 1 : -1) * ballSpeed;
+  ball.dy = (Math.random() > 0.5 ? 1 : -1) * ballSpeed;
+  document.getElementById('winPopup').style.display = 'none';
+  
+  // Reset timer if in timer mode
+  if (gameMode === 'timer') {
+    timerModeTimeLeft = 60; // 1 minute
+    startTimerMode();
+  } else {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+  
+  // Reset paddle positions
+  leftPaddle.y = canvas.height / 2 - leftPaddle.height / 2;
+  rightPaddle.y = canvas.height / 2 - rightPaddle.height / 2;
+  leftPaddle.dy = 0;
+  rightPaddle.dy = 0;
+  
+  // Reset abilities
+  abilities.player1.slowActive = false;
+  abilities.player1.slowCooldown = 0;
+  abilities.player1.slowDuration = 0;
+  abilities.player1.slowFadeOpacity = 0;
+  abilities.player1.speedBoostActive = false;
+  abilities.player1.speedBoostCooldown = 0;
+  abilities.player1.speedBoostDuration = 0;
+  abilities.player1.speedBoostGlow = 0;
+  abilities.player1.redirectActive = false;
+  abilities.player1.redirectCooldown = 0;
+  abilities.player1.redirectFlashTime = 0;
+  abilities.player2.slowActive = false;
+  abilities.player2.slowCooldown = 0;
+  abilities.player2.slowDuration = 0;
+  abilities.player2.slowFadeOpacity = 0;
+  abilities.player2.speedBoostActive = false;
+  abilities.player2.speedBoostCooldown = 0;
+  abilities.player2.speedBoostDuration = 0;
+  abilities.player2.speedBoostGlow = 0;
+  abilities.player2.redirectActive = false;
+  abilities.player2.redirectCooldown = 0;
+  abilities.player2.redirectFlashTime = 0;
+  ballSpeedBoost.active = false;
+  ballSpeedBoost.appliedBy = null;
+}
+
+// Activate ability for a player
+// Activate slow ability (blue overlay)
+function activateSlowAbility(player) {
+  const ability = abilities[player];
+  const now = Date.now();
+  
+  // Check if ability is on cooldown
+  if (ability.slowCooldown > now) {
+    return false; // Still on cooldown
+  }
+  
+  // Check if ability is already active
+  if (ability.slowActive) {
+    return false; // Already active
+  }
+  
+  // Activate ability
+  ability.slowActive = true;
+  ability.slowDuration = now + ABILITY_DURATION;
+  ability.slowCooldown = now + ABILITY_COOLDOWN;
+  ability.slowFadeOpacity = 0; // Start fade in
+  
+  // Play activation sound
+  if (abilityActivationSound) {
+    abilityActivationSound.currentTime = 0;
+    abilityActivationSound.play().catch(e => {});
+  }
+  
+  // Send to server if in online mode
+  if (onlineMode && socket && isConnected) {
+    socket.emit('abilityUsed', {
+      roomId: roomId,
+      side: player === 'player1' ? 'left' : 'right',
+      ability: 'slow'
+    });
+  }
+  
+  return true;
+}
+
+// Activate speed boost ability (red glow)
+function activateSpeedBoostAbility(player) {
+  const ability = abilities[player];
+  const now = Date.now();
+  
+  // Check if ability is on cooldown
+  if (ability.speedBoostCooldown > now) {
+    return false; // Still on cooldown
+  }
+  
+  // Check if ability is already active
+  if (ability.speedBoostActive) {
+    return false; // Already active
+  }
+  
+  // Activate ability
+  ability.speedBoostActive = true;
+  ability.speedBoostDuration = now + ABILITY_DURATION;
+  ability.speedBoostCooldown = now + ABILITY_COOLDOWN;
+  ability.speedBoostGlow = 0; // Start glow
+  
+  // Play activation sound
+  if (abilityActivationSound) {
+    abilityActivationSound.currentTime = 0;
+    abilityActivationSound.play().catch(e => {});
+  }
+  
+  // Send to server if in online mode
+  if (onlineMode && socket && isConnected) {
+    socket.emit('abilityUsed', {
+      roomId: roomId,
+      side: player === 'player1' ? 'left' : 'right',
+      ability: 'boost'
+    });
+  }
+  
+  return true;
+}
+
+// Activate redirect ability (ball redirection)
+function activateRedirectAbility(player) {
+  const ability = abilities[player];
+  const now = Date.now();
+  
+  // Check if ability is on cooldown
+  if (ability.redirectCooldown > now) {
+    return false; // Still on cooldown
+  }
+  
+  // Check if ability is already active
+  if (ability.redirectActive) {
+    return false; // Already active
+  }
+  
+  const ballCenterX = ball.x + ball.width / 2;
+  const courtCenter = canvas.width / 2;
+  const isPlayer1 = player === 'player1';
+  const ballGoingTowardsOpponent = isPlayer1 ? ball.dx > 0 : ball.dx < 0;
+  const ballOnYourSide = isPlayer1 ? ballCenterX < courtCenter : ballCenterX > courtCenter;
+  
+  // Activate ability
+  ability.redirectActive = true;
+  ability.redirectCooldown = now + ABILITY_REDIRECT_COOLDOWN;
+  ability.redirectFlashTime = now + ABILITY_REDIRECT_FLASH_DURATION;
+  
+  // Play activation sound
+  if (abilityActivationSound) {
+    abilityActivationSound.currentTime = 0;
+    abilityActivationSound.play().catch(e => {});
+  }
+  
+  // If ball is going towards opponent, redirect randomly
+  if (ballGoingTowardsOpponent && !ballOnYourSide) {
+    // Random angle (not towards activator - ensure ball still goes towards opponent)
+    const randomAngle = (Math.random() - 0.5) * Math.PI * 0.8; // -72 to +72 degrees
+    const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+    // Ensure dx maintains direction towards opponent (positive for player 1, negative for player 2)
+    const baseDx = isPlayer1 ? Math.abs(Math.cos(randomAngle)) : -Math.abs(Math.cos(randomAngle));
+    ball.dx = baseDx * speed;
+    ball.dy = Math.sin(randomAngle) * speed;
+  } 
+  // If ball is towards you, launch it to the other side
+  else if (ballOnYourSide) {
+    // Launch ball to opponent's side
+    const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+    ball.dx = isPlayer1 ? speed : -speed;
+    ball.dy = (Math.random() - 0.5) * speed * 0.6; // Slight vertical variation
+  }
+  
+  // Remove speed boost when redirect is used
+  ballSpeedBoost.active = false;
+  ballSpeedBoost.appliedBy = null;
+  
+  // Send to server if in online mode
+  if (onlineMode && socket && isConnected) {
+    socket.emit('abilityUsed', {
+      roomId: roomId,
+      side: isPlayer1 ? 'left' : 'right',
+      ability: 'redirect'
+    });
+  }
+  
+  return true;
+}
+
+// Update ability states (cooldowns, durations, fade effects)
+function updateAbilities() {
+  const now = Date.now();
+  
+  for (const player of ['player1', 'player2']) {
+    const ability = abilities[player];
+    
+    // Update slow ability duration
+    if (ability.slowActive && now >= ability.slowDuration) {
+      ability.slowActive = false;
+      ability.slowFadeOpacity = 0.5; // Start fade out
+    }
+    
+    // Update slow fade opacity
+    if (ability.slowActive) {
+      // Fade in
+      if (ability.slowFadeOpacity < 0.5) {
+        ability.slowFadeOpacity = Math.min(0.5, ability.slowFadeOpacity + 0.05);
+      }
+    } else if (ability.slowFadeOpacity > 0) {
+      // Fade out
+      ability.slowFadeOpacity = Math.max(0, ability.slowFadeOpacity - 0.05);
+    }
+    
+    // Update speed boost ability duration
+    if (ability.speedBoostActive && now >= ability.speedBoostDuration) {
+      ability.speedBoostActive = false;
+      ability.speedBoostGlow = 1.0; // Start fade out
+    }
+    
+    // Update speed boost glow
+    if (ability.speedBoostActive) {
+      // Fade in glow
+      if (ability.speedBoostGlow < 1.0) {
+        ability.speedBoostGlow = Math.min(1.0, ability.speedBoostGlow + 0.1);
+      }
+    } else if (ability.speedBoostGlow > 0) {
+      // Fade out glow
+      ability.speedBoostGlow = Math.max(0, ability.speedBoostGlow - 0.1);
+    }
+    
+    // Update redirect ability flash
+    if (ability.redirectActive && now >= ability.redirectFlashTime) {
+      ability.redirectActive = false;
+    }
+  }
+}
+
+// Check if ball should be slowed by ability
+function getBallSpeedMultiplier() {
+  const ballCenterX = ball.x + ball.width / 2;
+  const courtCenter = canvas.width / 2;
+  
+  // Check for speed boost (applied when ball is hit)
+  if (ballSpeedBoost.active) {
+    return ABILITY_SPEED_BOOST_FACTOR; // 175% speed
+  }
+  
+  // Check player 1 slow ability (left side)
+  if (abilities.player1.slowActive && ballCenterX < courtCenter) {
+    return ABILITY_SLOW_FACTOR; // 60% speed
+  }
+  
+  // Check player 2 slow ability (right side)
+  if (abilities.player2.slowActive && ballCenterX > courtCenter) {
+    return ABILITY_SLOW_FACTOR; // 60% speed
+  }
+  
+  return 1.0; // Normal speed
+}
+
+// Update speeds based on difficulty
+function updateSpeeds() {
+  if (difficulty === 'easy') {
+    ballSpeed = baseBallSpeed * 0.7; // 70% speed
+    paddleSpeed = basePaddleSpeed; // Normal for player
+  } else if (difficulty === 'normal') {
+    ballSpeed = baseBallSpeed; // Normal speed
+    paddleSpeed = basePaddleSpeed; // Normal speed
+  } else if (difficulty === 'hard') {
+    ballSpeed = baseBallSpeed * 1.25; // 125% speed
+    paddleSpeed = basePaddleSpeed; // Normal for player (AI still at 80%)
+  }
+}
+
+// Handle game mode change
+document.getElementById('gameModeSelect').addEventListener('change', function(e) {
+  gameMode = e.target.value;
+  aiMode = (gameMode === 'ai');
+  onlineMode = (gameMode === 'online');
+  
+  // Show/hide difficulty selector for AI mode
+  const difficultySelect = document.getElementById('difficultySelect');
+  if (aiMode) {
+    difficultySelect.style.display = 'block';
+  } else {
+    difficultySelect.style.display = 'none';
+  }
+  
+  // Show/hide matchmaking UI for online mode
+  const matchmakingUI = document.getElementById('matchmakingUI');
+  if (onlineMode) {
+    matchmakingUI.style.display = 'block';
+    // Initialize socket connection
+    if (!socket) {
+      initSocket();
+    }
+  } else {
+    matchmakingUI.style.display = 'none';
+    // Cancel matchmaking if in queue
+    if (isInQueue) {
+      cancelMatchmaking();
+    }
+    // Disconnect if online mode was active
+    if (socket && onlineMode) {
+      socket.disconnect();
+      onlineMode = false;
+      roomId = null;
+      playerSide = null;
+      isHost = false;
+    }
+  }
+  
+  // Update mobile controls visibility
+  updateMobileControlsVisibility();
+  
+  updateSpeeds();
+  restartGame();
+});
+
+// Handle difficulty change
+document.getElementById('difficultySelect').addEventListener('change', function(e) {
+  difficulty = e.target.value;
+  updateSpeeds();
+  if (gameMode === 'ai') {
+    restartGame();
+  }
+});
+
+// game loop
+let frameCount = 0;
+function loop() {
+  requestAnimationFrame(loop);
+  frameCount++;
+  
+  // Draw table tennis table surface (green)
+  const tableColor = '#2d5016'; // Dark green table color
+  const tableBorderColor = '#ffffff'; // White border
+  const netColor = '#ffffff'; // White net
+  
+  // Clear and draw table background
+  context.fillStyle = tableColor;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Add subtle texture pattern to table surface
+  context.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  for (let x = 0; x < canvas.width; x += 20) {
+    for (let y = 0; y < canvas.height; y += 20) {
+      if ((x + y) % 40 === 0) {
+        context.fillRect(x, y, 10, 10);
+      }
+    }
+  }
+  
+  // Draw table border lines (white)
+  context.strokeStyle = tableBorderColor;
+  context.lineWidth = 3;
+  context.strokeRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw center line (dividing the table into two halves)
+  context.strokeStyle = tableBorderColor;
+  context.lineWidth = 2;
+  context.setLineDash([]);
+  context.beginPath();
+  context.moveTo(canvas.width / 2, grid);
+  context.lineTo(canvas.width / 2, canvas.height - grid);
+  context.stroke();
+  
+  // Draw net in the middle
+  context.strokeStyle = netColor;
+  context.lineWidth = 4;
+  context.setLineDash([8, 4]); // Dashed line for net
+  context.beginPath();
+  context.moveTo(canvas.width / 2, grid);
+  context.lineTo(canvas.width / 2, canvas.height - grid);
+  context.stroke();
+  context.setLineDash([]); // Reset line dash
+
+  // Skip game logic if game is over (but still draw)
+  if (!gameOver) {
+  // Update abilities (cooldowns, durations, fade effects)
+  updateAbilities();
+  
+  // Update AI paddle if in AI mode
+  if (aiMode) {
+    updateAIPaddle();
+  }
+  
+  // move paddles by their velocity
+  leftPaddle.y += leftPaddle.dy;
+  rightPaddle.y += rightPaddle.dy;
+
+  // prevent paddles from going through walls
+  if (leftPaddle.y < grid) {
+    leftPaddle.y = grid;
+  }
+  else if (leftPaddle.y > maxPaddleY) {
+    leftPaddle.y = maxPaddleY;
+  }
+
+  if (rightPaddle.y < grid) {
+    rightPaddle.y = grid;
+  }
+  else if (rightPaddle.y > maxPaddleY) {
+    rightPaddle.y = maxPaddleY;
+  }
+
+  // update paddle swing mechanics based on ball trajectory
+  if (!onlineMode || playerSide === 'left') {
+    updatePaddleSwing(leftPaddle, ball);
+  }
+  if (!onlineMode || playerSide === 'right') {
+    updatePaddleSwing(rightPaddle, ball);
+  }
+
+  // Online mode: Send paddle updates (throttle to every 3 frames)
+  if (onlineMode && frameCount % 3 === 0) {
+    sendPaddleUpdate();
+    // Host sends full game state
+    if (isHost) {
+      sendGameState();
+    }
+  }
+
+  // draw paddles with rotation (table tennis rackets)
+  drawRotatedPaddle(leftPaddle, (!onlineMode || playerSide === 'left') ? 'player1' : null);
+  drawRotatedPaddle(rightPaddle, (!onlineMode || playerSide === 'right') ? (aiMode ? null : 'player2') : null);
+
+  // move ball by its velocity
+  const ballRadius = ball.width / 2;
+  
+  // Add current position to trail before moving (only if ball moved enough distance)
+  if (!ball.resetting) {
+    const lastPoint = ball.trail[ball.trail.length - 1];
+    const minDistance = 2; // Minimum distance between trail points
+    
+    if (!lastPoint || 
+        Math.sqrt(Math.pow(ball.x + ballRadius - lastPoint.x, 2) + 
+                  Math.pow(ball.y + ballRadius - lastPoint.y, 2)) > minDistance) {
+      ball.trail.push({ x: ball.x + ballRadius, y: ball.y + ballRadius });
+      // Limit trail length
+      if (ball.trail.length > ball.maxTrailLength) {
+        ball.trail.shift(); // Remove oldest position
+      }
+    }
+  }
+  
+  // In online mode, only host processes ball physics
+  if (!onlineMode || (onlineMode && isHost)) {
+    // Apply ability speed multiplier if active
+    const speedMultiplier = getBallSpeedMultiplier();
+    ball.x += ball.dx * speedMultiplier;
+    ball.y += ball.dy * speedMultiplier;
+
+    // prevent ball from going through walls by changing its velocity
+  // Use ball radius for proper collision detection
+  if (ball.y + ballRadius < grid) {
+    ball.y = grid - ballRadius;
+    ball.dy *= -1;
+    // Ensure ball doesn't get stuck
+    if (Math.abs(ball.dy) < 0.1) {
+      ball.dy = ball.dy < 0 ? -ballSpeed : ballSpeed;
+    }
+  }
+  else if (ball.y + ballRadius > canvas.height - grid) {
+    ball.y = canvas.height - grid - ballRadius;
+    ball.dy *= -1;
+    // Ensure ball doesn't get stuck
+    if (Math.abs(ball.dy) < 0.1) {
+      ball.dy = ball.dy < 0 ? -ballSpeed : ballSpeed;
+    }
+  }
+  
+  // Check if ball reaches side walls for scoring
+  const ballCenterX = ball.x + ballRadius;
+  
+  // Score when ball reaches the side walls (not when passing paddles)
+  if (!ball.resetting) {
+    // Check if ball reached left wall (scoring for right player)
+    if (ballCenterX < 0) {
+      ball.resetting = true;
+      ball.trail = []; // Clear trail immediately on reset
+      handleScore('right');
+      
+      // Stop the ball
+      ball.dx = 0;
+      ball.dy = 0;
+
+      // give some time for the player to recover before launching the ball again
+      setTimeout(() => {
+        if (!gameOver) {
+          ball.resetting = false;
+          ball.x = canvas.width / 2;
+          ball.y = canvas.height / 2;
+          ball.trail = []; // Clear trail when resetting position
+          // Randomize initial direction
+          ball.dx = (Math.random() > 0.5 ? 1 : -1) * ballSpeed;
+          ball.dy = (Math.random() > 0.5 ? 1 : -1) * ballSpeed;
+        }
+      }, 400);
+    }
+    // Check if ball reached right wall (scoring for left player)
+    else if (ballCenterX > canvas.width) {
+      ball.resetting = true;
+      ball.trail = []; // Clear trail immediately on reset
+      handleScore('left');
+      
+      // Stop the ball
+      ball.dx = 0;
+      ball.dy = 0;
+
+      // give some time for the player to recover before launching the ball again
+      setTimeout(() => {
+        if (!gameOver) {
+          ball.resetting = false;
+          ball.x = canvas.width / 2;
+          ball.y = canvas.height / 2;
+          ball.trail = []; // Clear trail when resetting position
+          // Randomize initial direction
+          ball.dx = (Math.random() > 0.5 ? 1 : -1) * ballSpeed;
+          ball.dy = (Math.random() > 0.5 ? 1 : -1) * ballSpeed;
+        }
+      }, 400);
+    }
+  }
+  
+  // Safety: prevent ball from going too far out (but don't bounce it back)
+  if (ballCenterX < -100) {
+    ball.x = -100 - ballRadius;
+  } else if (ballCenterX > canvas.width + 100) {
+    ball.x = canvas.width + 100 - ballRadius;
+  }
+  } // End of host-only ball physics in online mode
+
+  // Check for collisions and play sound immediately (host only in online mode)
+  if (!onlineMode || (onlineMode && isHost)) {
+    const leftCollision = collidesWithRotatedPaddle(ball, leftPaddle) && ball.dx < 0;
+  const rightCollision = collidesWithRotatedPaddle(ball, rightPaddle) && ball.dx > 0;
+  
+  // Play sound immediately when collision is detected (before processing)
+  if ((leftCollision || rightCollision) && ball.lastCollisionFrame !== frameCount) {
+    if (paddleHitSound && paddleHitSound.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+      ball.lastCollisionFrame = frameCount;
+      // Stop any current playback
+      paddleHitSound.pause();
+      // Set to offset to skip silence at start - set right before play for immediate effect
+      paddleHitSound.currentTime = paddleHitSoundOffset;
+      // Play immediately
+      const playPromise = paddleHitSound.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => {
+          // If play fails, try once more
+          paddleHitSound.currentTime = paddleHitSoundOffset;
+          paddleHitSound.play().catch(err => {});
+        });
+      }
+    }
+  }
+  
+  // check to see if ball collides with paddle. if they do change x velocity
+  if (leftCollision) {
+    // Calculate bounce angle based on paddle rotation and hit position
+      const paddleCenterY = leftPaddle.y + leftPaddle.height / 2;
+      const ballCenterY = ball.y + ballRadius;
+      const hitOffset = (ballCenterY - paddleCenterY) / (leftPaddle.height / 2);
+      
+      // Add spin from paddle rotation
+      const spinEffect = leftPaddle.angularVelocity * 2;
+      
+      ball.dx *= -1;
+      ball.dy += hitOffset * 3 + spinEffect;
+      
+      // Safety: ensure velocities are valid and not too small
+      if (!isFinite(ball.dx) || Math.abs(ball.dx) < 0.1) {
+        ball.dx = ballSpeed; // Moving right after hitting left paddle
+      }
+      if (!isFinite(ball.dy)) {
+        ball.dy = 0;
+      }
+      // Limit vertical velocity to prevent extreme angles
+      ball.dy = Math.max(-ballSpeed * 3, Math.min(ballSpeed * 3, ball.dy));
+
+      // move ball next to the paddle otherwise the collision will happen again
+      // in the next frame - ensure it's clearly to the right of the paddle
+      const newX = leftPaddle.x + leftPaddle.width + ballRadius + 2; // Extra margin to prevent stuck
+      if (newX < canvas.width - ballRadius) {
+        ball.x = newX;
+      } else {
+        ball.x = canvas.width - ballRadius - 5; // Keep ball in bounds
+      }
+      
+      // Ensure ball is moving away from paddle
+      if (ball.dx < 0) {
+        ball.dx = ballSpeed;
+      }
+      
+      // Remove speed boost immediately when ball is hit
+      ballSpeedBoost.active = false;
+      ballSpeedBoost.appliedBy = null;
+      
+      // Handle speed boost ability for player 1 (apply after removing old one)
+      if (abilities.player1.speedBoostActive) {
+        // Check if opponent has any ability active (both abilities cancel speed boost when outgoing)
+        const opponentHasAbility = abilities.player2.slowActive || abilities.player2.speedBoostActive;
+        if (!opponentHasAbility || ball.dx <= 0) {
+          // Apply speed boost (only if not both abilities active or ball not outgoing)
+          ballSpeedBoost.active = true;
+          ballSpeedBoost.appliedBy = 'player1';
+        }
+      }
+      
+      // Reset swing state so paddle can swing again on next approach
+      leftPaddle.swingComplete = true;
+      leftPaddle.targetAngle = 0;
+  }
+  else if (rightCollision) {
+    // Calculate bounce angle based on paddle rotation and hit position
+    const paddleCenterY = rightPaddle.y + rightPaddle.height / 2;
+    const ballCenterY = ball.y + ballRadius;
+    const hitOffset = (ballCenterY - paddleCenterY) / (rightPaddle.height / 2);
+    
+    // Add spin from paddle rotation
+    const spinEffect = rightPaddle.angularVelocity * 2;
+    
+    ball.dx *= -1;
+    ball.dy += hitOffset * 3 + spinEffect;
+    
+    // Remove speed boost immediately when ball is hit
+    ballSpeedBoost.active = false;
+    ballSpeedBoost.appliedBy = null;
+    
+    // Handle speed boost ability for player 2 (only if not AI, apply after removing old one)
+    if (!aiMode && abilities.player2.speedBoostActive) {
+      // Check if opponent has any ability active (both abilities cancel speed boost when outgoing)
+      const opponentHasAbility = abilities.player1.slowActive || abilities.player1.speedBoostActive;
+      if (!opponentHasAbility || ball.dx >= 0) {
+        // Apply speed boost (only if not both abilities active or ball not outgoing)
+        ballSpeedBoost.active = true;
+        ballSpeedBoost.appliedBy = 'player2';
+      }
+    }
+    
+    // Safety: ensure velocities are valid and not too small
+    if (!isFinite(ball.dx) || Math.abs(ball.dx) < 0.1) {
+      ball.dx = -ballSpeed; // Moving left after hitting right paddle
+    }
+    if (!isFinite(ball.dy)) {
+      ball.dy = 0;
+    }
+    // Limit vertical velocity to prevent extreme angles
+    ball.dy = Math.max(-ballSpeed * 3, Math.min(ballSpeed * 3, ball.dy));
+    
+    // move ball next to the paddle otherwise the collision will happen again
+    // in the next frame - ensure it's clearly to the left of the paddle
+    const newX = rightPaddle.x - ball.width - ballRadius - 2; // Extra margin to prevent stuck
+    if (newX > ballRadius) {
+      ball.x = newX;
+    } else {
+      ball.x = ballRadius + 5; // Keep ball in bounds
+    }
+    
+    // Ensure ball is moving away from paddle
+    if (ball.dx > 0) {
+      ball.dx = -ballSpeed;
+    }
+    
+    // Reset swing state so paddle can swing again on next approach
+    rightPaddle.swingComplete = true;
+    rightPaddle.targetAngle = 0;
+  } // End of host-only collision handling in online mode
+  } // End of host-only collision detection block
+
+  // draw ball trail (wind effect) with gradient fade
+  if (ball.trail.length > 1) {
+    context.save();
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    
+    // Draw trail segments with decreasing opacity (fade effect)
+    for (let i = 0; i < ball.trail.length - 1; i++) {
+      const point1 = ball.trail[i];
+      const point2 = ball.trail[i + 1];
+      
+      // Calculate opacity based on position in trail (fade from 60% to 0%)
+      const opacity = 0.6 * (1 - i / ball.trail.length);
+      context.globalAlpha = opacity;
+      context.strokeStyle = 'white';
+      context.lineWidth = ballRadius * 2 * (1 - i / ball.trail.length * 0.5); // Also fade width
+      
+      context.beginPath();
+      context.moveTo(point1.x, point1.y);
+      context.lineTo(point2.x, point2.y);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  // draw table edges (top and bottom walls) - white borders
+  context.fillStyle = tableBorderColor;
+  context.fillRect(0, 0, canvas.width, grid);
+  context.fillRect(0, canvas.height - grid, canvas.width, grid);
+  
+  // Add subtle shadow to table edges for depth
+  context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  context.fillRect(0, grid, canvas.width, 2);
+  context.fillRect(0, canvas.height - grid - 2, canvas.width, 2);
+
+  // draw ball as a smooth circle (white table tennis ball with 3D effect)
+  const ballDrawX = ball.x + ballRadius;
+  const ballDrawY = ball.y + ballRadius;
+  
+  // Create gradient for 3D ball effect
+  const gradient = context.createRadialGradient(
+    ballDrawX - ballRadius * 0.3, ballDrawY - ballRadius * 0.3, 0,
+    ballDrawX, ballDrawY, ballRadius
+  );
+  gradient.addColorStop(0, '#ffffff'); // Bright white highlight
+  gradient.addColorStop(0.7, '#f5f5f5'); // Slightly off-white
+  gradient.addColorStop(1, '#e0e0e0'); // Light gray shadow
+  
+  // Check for redirect ability black flash
+  const now = Date.now();
+  const hasRedirectFlash = (abilities.player1.redirectActive && now < abilities.player1.redirectFlashTime) ||
+                           (abilities.player2.redirectActive && now < abilities.player2.redirectFlashTime);
+  
+  // Draw ball shadow first
+  context.fillStyle = 'rgba(0, 0, 0, 0.15)';
+  context.beginPath();
+  context.arc(ballDrawX + 1, ballDrawY + 1, ballRadius, 0, Math.PI * 2);
+  context.fill();
+  
+  // Draw main ball - black if redirect flash is active, otherwise normal gradient
+  if (hasRedirectFlash) {
+    context.fillStyle = '#000000'; // Black flash
+  } else {
+    context.fillStyle = gradient;
+  }
+  context.beginPath();
+  context.arc(ballDrawX, ballDrawY, ballRadius, 0, Math.PI * 2);
+  context.fill();
+  
+  // Add subtle border for definition
+  context.strokeStyle = hasRedirectFlash ? 'rgba(100, 100, 100, 0.5)' : 'rgba(200, 200, 200, 0.3)';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.arc(ballDrawX, ballDrawY, ballRadius, 0, Math.PI * 2);
+  context.stroke();
+  
+  } // End of gameOver check - always draw scores below
+  
+  // Draw ability overlays (blue translucent effect for slow ability)
+  const courtCenter = canvas.width / 2;
+  
+  // Player 1 slow ability overlay (left side)
+  if (abilities.player1.slowFadeOpacity > 0) {
+    context.fillStyle = `rgba(0, 100, 255, ${abilities.player1.slowFadeOpacity})`;
+    context.fillRect(0, grid, courtCenter, canvas.height - grid * 2);
+  }
+  
+  // Player 2 slow ability overlay (right side)
+  if (abilities.player2.slowFadeOpacity > 0) {
+    context.fillStyle = `rgba(0, 100, 255, ${abilities.player2.slowFadeOpacity})`;
+    context.fillRect(courtCenter, grid, canvas.width - courtCenter, canvas.height - grid * 2);
+  }
+  
+  // draw scores with player labels
+  context.fillStyle = 'white';
+  context.font = 'bold 36px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+  context.textAlign = 'center';
+  
+  // Player 1 (left)
+  context.fillText('Player 1', canvas.width / 4, 40);
+  context.font = '48px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+  context.fillText(scores.left.toString(), canvas.width / 4, 85);
+  
+  // Player 1 ability cooldown timers
+  const now = Date.now();
+  context.font = 'bold 20px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+  
+  // Slow ability (blue) cooldown
+  const player1SlowCD = abilities.player1.slowCooldown;
+  if (player1SlowCD > now) {
+    const remaining = Math.ceil((player1SlowCD - now) / 1000);
+    context.fillStyle = remaining <= 3 ? '#ff6b6b' : '#ffff00';
+    context.fillText('Slow CD: ' + remaining + 's', canvas.width / 4, 120);
+  } else if (!abilities.player1.slowActive) {
+    context.fillStyle = '#00ff00';
+    context.fillText('Slow Ready', canvas.width / 4, 120);
+  } else {
+    context.fillStyle = '#00aaff';
+    context.fillText('Slow Active', canvas.width / 4, 120);
+  }
+  
+  // Speed boost ability (red) cooldown
+  const player1SpeedCD = abilities.player1.speedBoostCooldown;
+  if (player1SpeedCD > now) {
+    const remaining = Math.ceil((player1SpeedCD - now) / 1000);
+    context.fillStyle = remaining <= 3 ? '#ff6b6b' : '#ff4444';
+    context.fillText('Boost CD: ' + remaining + 's', canvas.width / 4, 145);
+  } else if (!abilities.player1.speedBoostActive) {
+    context.fillStyle = '#00ff00';
+    context.fillText('Boost Ready', canvas.width / 4, 145);
+  } else {
+    context.fillStyle = '#ff0066';
+    context.fillText('Boost Active', canvas.width / 4, 145);
+  }
+  
+  // Redirect ability (purple) cooldown
+  const player1RedirectCD = abilities.player1.redirectCooldown;
+  if (player1RedirectCD > now) {
+    const remaining = Math.ceil((player1RedirectCD - now) / 1000);
+    context.fillStyle = remaining <= 3 ? '#ff6b6b' : '#aa44ff';
+    context.fillText('Redirect CD: ' + remaining + 's', canvas.width / 4, 170);
+  } else {
+    context.fillStyle = '#00ff00';
+    context.fillText('Redirect Ready', canvas.width / 4, 170);
+  }
+  
+  // Player 2 / AI (right)
+  context.fillStyle = 'white';
+  context.font = 'bold 36px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+  context.fillText(aiMode ? 'AI' : 'Player 2', (canvas.width * 3) / 4, 40);
+  context.font = '48px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+  context.fillText(scores.right.toString(), (canvas.width * 3) / 4, 85);
+  
+  // Player 2 ability cooldown timers (only if not AI)
+  if (!aiMode) {
+    context.font = 'bold 20px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+    
+    // Slow ability (blue) cooldown
+    const player2SlowCD = abilities.player2.slowCooldown;
+    if (player2SlowCD > now) {
+      const remaining = Math.ceil((player2SlowCD - now) / 1000);
+      context.fillStyle = remaining <= 3 ? '#ff6b6b' : '#ffff00';
+      context.fillText('Slow CD: ' + remaining + 's', (canvas.width * 3) / 4, 120);
+    } else if (!abilities.player2.slowActive) {
+      context.fillStyle = '#00ff00';
+      context.fillText('Slow Ready', (canvas.width * 3) / 4, 120);
+    } else {
+      context.fillStyle = '#00aaff';
+      context.fillText('Slow Active', (canvas.width * 3) / 4, 120);
+    }
+    
+    // Speed boost ability (red) cooldown
+    const player2SpeedCD = abilities.player2.speedBoostCooldown;
+    if (player2SpeedCD > now) {
+      const remaining = Math.ceil((player2SpeedCD - now) / 1000);
+      context.fillStyle = remaining <= 3 ? '#ff6b6b' : '#ff4444';
+      context.fillText('Boost CD: ' + remaining + 's', (canvas.width * 3) / 4, 145);
+    } else if (!abilities.player2.speedBoostActive) {
+      context.fillStyle = '#00ff00';
+      context.fillText('Boost Ready', (canvas.width * 3) / 4, 145);
+    } else {
+      context.fillStyle = '#ff0066';
+      context.fillText('Boost Active', (canvas.width * 3) / 4, 145);
+    }
+    
+    // Redirect ability (purple) cooldown
+    const player2RedirectCD = abilities.player2.redirectCooldown;
+    if (player2RedirectCD > now) {
+      const remaining = Math.ceil((player2RedirectCD - now) / 1000);
+      context.fillStyle = remaining <= 3 ? '#ff6b6b' : '#aa44ff';
+      context.fillText('Redirect CD: ' + remaining + 's', (canvas.width * 3) / 4, 170);
+    } else {
+      context.fillStyle = '#00ff00';
+      context.fillText('Redirect Ready', (canvas.width * 3) / 4, 170);
+    }
+  }
+  
+  // Draw timer if in timer mode
+  if (gameMode === 'timer') {
+    const minutes = Math.floor(timerModeTimeLeft / 60);
+    const seconds = timerModeTimeLeft % 60;
+    const timeString = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+    context.font = 'bold 32px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+    context.fillText(timeString, canvas.width / 2, 40);
+  }
+  
+  // Clamp ball velocities to prevent extreme speeds
+  const maxSpeed = ballSpeed * 4;
+  ball.dx = Math.max(-maxSpeed, Math.min(maxSpeed, ball.dx));
+  ball.dy = Math.max(-maxSpeed, Math.min(maxSpeed, ball.dy));
+}
+
+// listen to keyboard events to move the paddles
+document.addEventListener('keydown', function(e) {
+  // Prevent default behavior for game keys (prevents scrolling)
+  if ([16, 37, 38, 39, 40, 65, 68, 69, 87, 83].includes(e.which)) {
+    e.preventDefault();
+  }
+
+  // In online mode, only allow controlling your own paddle
+  const canControlLeft = !onlineMode || (onlineMode && playerSide === 'left');
+  const canControlRight = !onlineMode || (onlineMode && playerSide === 'right');
+  
+  // Ability activation
+  // Player 1 slow ability (A key)
+  if (e.which === 65 && canControlLeft) {
+    activateSlowAbility('player1');
+  }
+  // Player 1 speed boost ability (D key)
+  if (e.which === 68 && canControlLeft) {
+    activateSpeedBoostAbility('player1');
+  }
+  // Player 1 redirect ability (E key)
+  if (e.which === 69 && canControlLeft) {
+    activateRedirectAbility('player1');
+  }
+  // Player 2 slow ability (Left Arrow key)
+  if (e.which === 37 && !aiMode && canControlRight) {
+    activateSlowAbility('player2');
+  }
+  // Player 2 speed boost ability (Right Arrow key)
+  if (e.which === 39 && !aiMode && canControlRight) {
+    activateSpeedBoostAbility('player2');
+  }
+  // Player 2 redirect ability (Shift key)
+  if (e.which === 16 && !aiMode && canControlRight) {
+    activateRedirectAbility('player2');
+  }
+
+  // up arrow key (only if not in AI mode and can control right)
+  if (e.which === 38 && !aiMode && canControlRight) {
+    rightPaddle.dy = -paddleSpeed;
+  }
+  // down arrow key (only if not in AI mode and can control right)
+  else if (e.which === 40 && !aiMode && canControlRight) {
+    rightPaddle.dy = paddleSpeed;
+  }
+
+  // w key (only if can control left)
+  if (e.which === 87 && canControlLeft) {
+    leftPaddle.dy = -paddleSpeed;
+  }
+  // s key (only if can control left)
+  else if (e.which === 83 && canControlLeft) {
+    leftPaddle.dy = paddleSpeed;
+  }
+});
+
+// listen to keyboard events to stop the paddle if key is released
+document.addEventListener('keyup', function(e) {
+  // In online mode, only allow controlling your own paddle
+  const canControlLeft = !onlineMode || (onlineMode && playerSide === 'left');
+  const canControlRight = !onlineMode || (onlineMode && playerSide === 'right');
+  
+  if ((e.which === 38 || e.which === 40) && !aiMode && canControlRight) {
+    rightPaddle.dy = 0;
+  }
+
+  if ((e.which === 83 || e.which === 87) && canControlLeft) {
+    leftPaddle.dy = 0;
+  }
+});
+
+// Toggle instructions modal
+function toggleInstructions() {
+  const modal = document.getElementById('instructionsModal');
+  if (modal.style.display === 'block') {
+    modal.style.display = 'none';
+  } else {
+    modal.style.display = 'block';
+  }
+}
+
+// Initialize game mode and speeds
+updateSpeeds();
+if (gameMode === 'timer') {
+  startTimerMode();
+}
+
+// Initialize mobile controls visibility
+updateMobileControlsVisibility();
+
+// Prevent default touch behavior on mobile buttons to avoid scrolling
+if (isMobile) {
+  const mobileButtons = document.querySelectorAll('.mobile-btn');
+  mobileButtons.forEach(btn => {
+    btn.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+    btn.addEventListener('touchend', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+  });
+  
+  // Make canvas responsive on mobile
+  function resizeCanvas() {
+    const maxWidth = window.innerWidth - 20;
+    const maxHeight = window.innerHeight - 200; // Account for controls
+    const aspectRatio = 750 / 585;
+    
+    let newWidth = maxWidth;
+    let newHeight = newWidth / aspectRatio;
+    
+    if (newHeight > maxHeight) {
+      newHeight = maxHeight;
+      newWidth = newHeight * aspectRatio;
+    }
+    
+    canvas.style.width = newWidth + 'px';
+    canvas.style.height = newHeight + 'px';
+  }
+  
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+}
+
+// start the game
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
