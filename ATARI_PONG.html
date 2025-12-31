@@ -287,6 +287,38 @@
     align-items: center;
   }
   
+  /* 2-player mode: smaller controls, one on each side */
+  .mobile-controls.two-player-mode {
+    justify-content: space-between;
+  }
+  
+  .mobile-controls.two-player-mode .mobile-btn {
+    font-size: 18px;
+    padding: 8px 12px;
+    min-width: 45px;
+    min-height: 45px;
+  }
+  
+  .mobile-controls.two-player-mode .mobile-btn.ability-slow,
+  .mobile-controls.two-player-mode .mobile-btn.ability-boost {
+    font-size: 14px;
+    padding: 7px 10px;
+  }
+  
+  .mobile-controls.two-player-mode .mobile-btn.ability-redirect {
+    font-size: 12px;
+    padding: 8px 10px;
+    min-width: 60px;
+  }
+  
+  .mobile-controls.two-player-mode .mobile-direction-buttons {
+    gap: 3px;
+  }
+  
+  .mobile-controls.two-player-mode .mobile-controls-left {
+    gap: 5px;
+  }
+  
   @media (max-width: 768px) {
     canvas {
       max-width: 100%;
@@ -442,21 +474,18 @@
   </div>
   
   <!-- Redirect button (right side) -->
-  <div class="mobile-controls-right">
+  <div class="mobile-controls-right" id="playerControlsLeftRedirect">
     <button class="mobile-btn ability-redirect" id="p1Redirect" ontouchstart="handleMobileAbility('p1Redirect')">Redirect</button>
   </div>
   
-  <!-- Player 2 Controls (hidden by default, shown only in 2-player mode) -->
-  <div class="mobile-controls-left" id="playerControlsRight" style="display: none;">
+  <!-- Player 2 Controls (right side, mirrored for 2-player mode) -->
+  <div class="mobile-controls-right" id="playerControlsRight" style="display: none;">
+    <button class="mobile-btn ability-boost" id="p2Boost" ontouchstart="handleMobileAbility('p2Boost')">⚡</button>
+    <button class="mobile-btn ability-slow" id="p2Slow" ontouchstart="handleMobileAbility('p2Slow')">⏱</button>
     <div class="mobile-direction-buttons">
       <button class="mobile-btn" id="p2Up" ontouchstart="handleMobileTouch('p2Up', true)" ontouchend="handleMobileTouch('p2Up', false)">↑</button>
       <button class="mobile-btn" id="p2Down" ontouchstart="handleMobileTouch('p2Down', true)" ontouchend="handleMobileTouch('p2Down', false)">↓</button>
     </div>
-    <button class="mobile-btn ability-slow" id="p2Slow" ontouchstart="handleMobileAbility('p2Slow')">⏱</button>
-    <button class="mobile-btn ability-boost" id="p2Boost" ontouchstart="handleMobileAbility('p2Boost')">⚡</button>
-  </div>
-  
-  <div class="mobile-controls-right" id="playerControlsRightRedirect" style="display: none;">
     <button class="mobile-btn ability-redirect" id="p2Redirect" ontouchstart="handleMobileAbility('p2Redirect')">Redirect</button>
   </div>
 </div>
@@ -479,7 +508,6 @@ const isMobile = isMobileDevice();
 const mobileControls = document.getElementById('mobileControls');
 const playerControlsLeft = document.getElementById('playerControlsLeft');
 const playerControlsRight = document.getElementById('playerControlsRight');
-const playerControlsRightRedirect = document.getElementById('playerControlsRightRedirect');
 
 // Show/hide mobile controls based on device
 if (isMobile) {
@@ -541,43 +569,51 @@ function handleMobileAbility(ability) {
 function updateMobileControlsVisibility() {
   if (!isMobile || !mobileControls) return;
   
-  const p1RedirectBtn = document.getElementById('p1Redirect');
-  const p1RedirectContainer = p1RedirectBtn ? p1RedirectBtn.parentElement : null;
+  const p1RedirectContainer = document.getElementById('playerControlsLeftRedirect');
   
   // In online mode, show only the controls for the current player
   if (onlineMode) {
+    if (mobileControls) mobileControls.classList.remove('two-player-mode');
     if (playerSide === 'left') {
       // Show Player 1 controls (left side)
       if (playerControlsLeft) playerControlsLeft.style.display = 'flex';
       if (playerControlsRight) playerControlsRight.style.display = 'none';
-      if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
       if (p1RedirectContainer) p1RedirectContainer.style.display = 'flex';
     } else if (playerSide === 'right') {
       // Show Player 2 controls (right side)
       if (playerControlsLeft) playerControlsLeft.style.display = 'none';
       if (playerControlsRight) playerControlsRight.style.display = 'flex';
-      if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'flex';
       if (p1RedirectContainer) p1RedirectContainer.style.display = 'none';
     } else {
       // Not matched yet, hide all
       if (playerControlsLeft) playerControlsLeft.style.display = 'none';
       if (playerControlsRight) playerControlsRight.style.display = 'none';
-      if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
       if (p1RedirectContainer) p1RedirectContainer.style.display = 'none';
     }
   } else if (aiMode) {
+    if (mobileControls) mobileControls.classList.remove('two-player-mode');
     // AI mode: show only Player 1 controls
     if (playerControlsLeft) playerControlsLeft.style.display = 'flex';
     if (playerControlsRight) playerControlsRight.style.display = 'none';
-    if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
     if (p1RedirectContainer) p1RedirectContainer.style.display = 'flex';
   } else {
-    // 2-player mode: show only Player 1 controls (mobile is single player)
-    // For true 2-player on mobile, would need split screen, but for now show P1
+    // 2-player mode (standard/timer): show both Player 1 and Player 2 controls
+    // P1 controls on left, P2 controls on right (mirrored)
     if (playerControlsLeft) playerControlsLeft.style.display = 'flex';
-    if (playerControlsRight) playerControlsRight.style.display = 'none';
-    if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
+    if (playerControlsRight) playerControlsRight.style.display = 'flex';
     if (p1RedirectContainer) p1RedirectContainer.style.display = 'flex';
+    
+    // Add two-player mode class for smaller controls
+    if (mobileControls) {
+      mobileControls.classList.add('two-player-mode');
+    }
+  }
+  
+  // Remove two-player mode class for other modes
+  if (onlineMode || aiMode) {
+    if (mobileControls) {
+      mobileControls.classList.remove('two-player-mode');
+    }
   }
 }
 // Audio offset to skip silence at the start (adjust this value if sound timing is off)
@@ -1835,13 +1871,22 @@ document.getElementById('gameModeSelect').addEventListener('change', function(e)
     gameOver = true;
   } else {
     matchmakingUI.style.display = 'none';
-    // Cancel matchmaking if in queue
-    if (isInQueue) {
-      cancelMatchmaking();
-    }
-    // Disconnect if online mode was active
-    if (socket && onlineMode) {
+    // Disconnect and cancel matchmaking if switching away from online mode
+    if (socket && isConnected && (isInQueue || onlineMode)) {
+      if (isInQueue) {
+        socket.emit('leaveQueue');
+        isInQueue = false;
+      }
       socket.disconnect();
+      if (onlineMode) {
+        handleOnlineDisconnect();
+      } else {
+        // Reset matchmaking state
+        gameOver = false;
+        document.getElementById('findMatchBtn').style.display = 'inline-block';
+        document.getElementById('cancelMatchBtn').style.display = 'none';
+        updateMatchmakingStatus('', '');
+      }
       onlineMode = false;
       roomId = null;
       playerSide = null;
@@ -2560,13 +2605,57 @@ if (isMobile) {
   resizeCanvas();
 }
 
-// Handle tab visibility change - disconnect if tab becomes hidden during online game
+// Handle tab visibility change - disconnect if tab becomes hidden during online/matchmaking
 document.addEventListener('visibilitychange', function() {
-  // If tab becomes hidden and we're in an online game, disconnect
-  if (document.hidden && onlineMode && socket && isConnected) {
-    console.log('Tab hidden - disconnecting from online game');
+  // If tab becomes hidden and we're in online mode (matchmaking or in game), disconnect
+  if (document.hidden && gameMode === 'online' && (isInQueue || onlineMode) && socket && isConnected) {
+    console.log('Tab/app hidden - disconnecting from online matchmaking/game');
+    if (isInQueue) {
+      socket.emit('leaveQueue');
+      isInQueue = false;
+    }
     socket.disconnect();
-    handleOnlineDisconnect();
+    if (onlineMode) {
+      handleOnlineDisconnect();
+    } else {
+      // Just reset matchmaking state
+      gameOver = false;
+      document.getElementById('findMatchBtn').style.display = 'inline-block';
+      document.getElementById('cancelMatchBtn').style.display = 'none';
+      updateMatchmakingStatus('Connection lost. Please try again.', '#ff0000');
+    }
+  }
+});
+
+// Handle page unload (when user closes tab, navigates away, etc.)
+window.addEventListener('pagehide', function() {
+  if (gameMode === 'online' && (isInQueue || onlineMode) && socket && isConnected) {
+    console.log('Page unloading - disconnecting from online matchmaking/game');
+    if (isInQueue) {
+      socket.emit('leaveQueue');
+    }
+    socket.disconnect();
+  }
+});
+
+// Handle window blur (when user switches to another app/window)
+window.addEventListener('blur', function() {
+  if (gameMode === 'online' && (isInQueue || onlineMode) && socket && isConnected) {
+    console.log('Window lost focus - disconnecting from online matchmaking/game');
+    if (isInQueue) {
+      socket.emit('leaveQueue');
+      isInQueue = false;
+    }
+    socket.disconnect();
+    if (onlineMode) {
+      handleOnlineDisconnect();
+    } else {
+      // Just reset matchmaking state
+      gameOver = false;
+      document.getElementById('findMatchBtn').style.display = 'inline-block';
+      document.getElementById('cancelMatchBtn').style.display = 'none';
+      updateMatchmakingStatus('Connection lost. Please try again.', '#ff0000');
+    }
   }
 });
 
