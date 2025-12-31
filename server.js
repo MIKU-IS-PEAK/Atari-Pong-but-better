@@ -257,5 +257,3 @@ server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Open http://localhost:${PORT}/ATARI_PONG.html to play`);
 });
-
-
