@@ -551,7 +551,8 @@ let isInQueue = false;
 let roomId = null;
 let playerSide = null; // 'left' or 'right'
 let isHost = false; // Host controls the ball physics
-   let serverUrl = 'https://pong-game-server.onrender.com';
+// Automatically detect server URL - works both locally and on Render
+let serverUrl = window.location.origin; // Use same origin as the webpage
 
 // Initialize Socket.io connection
 function initSocket() {
