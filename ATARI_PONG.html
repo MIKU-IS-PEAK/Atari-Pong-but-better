@@ -497,7 +497,7 @@ const mobileTouchState = {
 };
 
 function handleMobileTouch(control, isPressed) {
-  if (gameOver) return;
+  if (gameOver || isInQueue || (gameMode === 'online' && !onlineMode)) return;
   
   mobileTouchState[control] = isPressed;
   
@@ -517,7 +517,7 @@ function handleMobileTouch(control, isPressed) {
 }
 
 function handleMobileAbility(ability) {
-  if (gameOver) return;
+  if (gameOver || isInQueue || (gameMode === 'online' && !onlineMode)) return;
   
   const canControlLeft = !onlineMode || (onlineMode && playerSide === 'left');
   const canControlRight = !onlineMode || (onlineMode && playerSide === 'right');
@@ -651,11 +651,13 @@ function initSocket() {
     });
 
     socket.on('matchFound', (data) => {
+      console.log('Match found!', data);
       roomId = data.roomId;
       playerSide = data.side;
       isHost = data.isHost;
       isInQueue = false;
       onlineMode = true;
+      gameOver = false; // Unfreeze game now that match is found
       updateMatchmakingStatus('Match found! Starting game...', '#00ff00');
       document.getElementById('findMatchBtn').style.display = 'none';
       document.getElementById('cancelMatchBtn').style.display = 'none';
@@ -753,13 +755,14 @@ function updateMatchmakingStatus(status, color) {
 
 // Start matchmaking
 function startMatchmaking() {
-  if (!isConnected) {
+  if (!socket || !isConnected) {
     initSocket();
     setTimeout(() => {
-      if (isConnected) {
+      if (socket && isConnected) {
         startMatchmaking();
       } else {
         updateMatchmakingStatus('Failed to connect to server', '#ff0000');
+        document.getElementById('findMatchBtn').style.display = 'inline-block';
       }
     }, 1000);
     return;
@@ -768,10 +771,12 @@ function startMatchmaking() {
   if (isInQueue) return;
 
   isInQueue = true;
+  gameOver = true; // Freeze game while waiting for match
   socket.emit('joinQueue');
   document.getElementById('findMatchBtn').style.display = 'none';
   document.getElementById('cancelMatchBtn').style.display = 'inline-block';
   updateMatchmakingStatus('Searching for opponent...', '#ffff00');
+  console.log('Joined matchmaking queue');
 }
 
 // Cancel matchmaking
@@ -779,9 +784,11 @@ function cancelMatchmaking() {
   if (socket && isInQueue) {
     socket.emit('leaveQueue');
     isInQueue = false;
+    gameOver = false; // Unfreeze game
     document.getElementById('findMatchBtn').style.display = 'inline-block';
     document.getElementById('cancelMatchBtn').style.display = 'none';
     updateMatchmakingStatus('', '');
+    console.log('Left matchmaking queue');
   }
 }
 
@@ -1489,7 +1496,11 @@ function startTimerMode() {
 
 // Restart game
 function restartGame() {
-  gameOver = false;
+  // Don't unfreeze if in online mode but no match found yet
+  const shouldFreezeForOnlineMatch = (gameMode === 'online' && !onlineMode);
+  if (!shouldFreezeForOnlineMatch) {
+    gameOver = false;
+  }
   scores.left = 0;
   scores.right = 0;
   ball.resetting = false;
@@ -1546,7 +1557,8 @@ function restartGame() {
   ballSpeedBoost.appliedBy = null;
   
   // Reset online mode state if in online mode (to allow finding new match)
-  if (gameMode === 'online') {
+  // Only reset if we're NOT currently in an active match (playerSide will be null if not matched)
+  if (gameMode === 'online' && !playerSide) {
     // Don't disconnect socket, just reset the game state
     roomId = null;
     playerSide = null;
@@ -1819,6 +1831,8 @@ document.getElementById('gameModeSelect').addEventListener('change', function(e)
     if (!socket) {
       initSocket();
     }
+    // Freeze game when switching to online mode (until match is found)
+    gameOver = true;
   } else {
     matchmakingUI.style.display = 'none';
     // Cancel matchmaking if in queue
@@ -1900,8 +1914,9 @@ function loop() {
   context.stroke();
   context.setLineDash([]); // Reset line dash
 
-  // Skip game logic if game is over (but still draw)
-  if (!gameOver) {
+  // Skip game logic if game is over, waiting for match, or in online mode but no match found yet
+  const isWaitingForOnlineMatch = (gameMode === 'online' && !onlineMode);
+  if (!gameOver && !isInQueue && !isWaitingForOnlineMatch) {
   // Update abilities (cooldowns, durations, fade effects)
   updateAbilities();
   
@@ -2418,6 +2433,8 @@ function loop() {
 
 // listen to keyboard events to move the paddles
 document.addEventListener('keydown', function(e) {
+  // Block all controls if waiting for match or in online mode but no match found
+  if (isInQueue || (gameMode === 'online' && !onlineMode)) return;
   // Prevent default behavior for game keys (prevents scrolling)
   if ([16, 37, 38, 39, 40, 65, 68, 69, 87, 83].includes(e.which)) {
     e.preventDefault();
@@ -2474,6 +2491,9 @@ document.addEventListener('keydown', function(e) {
 
 // listen to keyboard events to stop the paddle if key is released
 document.addEventListener('keyup', function(e) {
+  // Block all controls if waiting for match or in online mode but no match found
+  if (isInQueue || (gameMode === 'online' && !onlineMode)) return;
+  
   // In online mode, only allow controlling your own paddle
   const canControlLeft = !onlineMode || (onlineMode && playerSide === 'left');
   const canControlRight = !onlineMode || (onlineMode && playerSide === 'right');
@@ -2552,9 +2572,6 @@ document.addEventListener('visibilitychange', function() {
 
 // start the game
 requestAnimationFrame(loop);
-</script>
-</body>
-</html>
 </script>
 </body>
 </html>
