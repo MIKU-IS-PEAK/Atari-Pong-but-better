@@ -207,34 +207,27 @@
   }
   
   .mobile-controls.mobile-active {
-    display: block;
-  }
-  
-  .mobile-control-row {
     display: flex;
-    justify-content: space-around;
-    margin-bottom: 10px;
-    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
   }
   
-  .mobile-control-group {
+  .mobile-controls-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .mobile-direction-buttons {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 5px;
-  }
-  
-  .mobile-control-group label {
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
-    text-align: center;
   }
   
   .mobile-btn {
     font-family: 'Comic Neue', 'Comic Sans MS', 'Math Sans', sans-serif;
-    font-size: 16px;
-    padding: 15px 20px;
+    font-size: 24px;
+    padding: 12px 16px;
     background: #2d5016;
     color: white;
     border: 2px solid white;
@@ -242,12 +235,13 @@
     cursor: pointer;
     touch-action: manipulation;
     user-select: none;
-    min-width: 70px;
-    min-height: 50px;
+    min-width: 60px;
+    min-height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
+    line-height: 1;
   }
   
   .mobile-btn:active {
@@ -255,24 +249,10 @@
     transform: scale(0.95);
   }
   
-  .mobile-btn.ability-btn {
-    background: #4a2d6a;
-  }
-  
-  .mobile-btn.ability-btn:active {
-    background: #5a3d7a;
-  }
-  
-  .mobile-btn.ability-redirect {
-    background: #6a2d4a;
-  }
-  
-  .mobile-btn.ability-redirect:active {
-    background: #7a3d5a;
-  }
-  
   .mobile-btn.ability-slow {
     background: #2d4a6a;
+    font-size: 18px;
+    padding: 10px 14px;
   }
   
   .mobile-btn.ability-slow:active {
@@ -281,10 +261,30 @@
   
   .mobile-btn.ability-boost {
     background: #6a2d2d;
+    font-size: 18px;
+    padding: 10px 14px;
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
   }
   
   .mobile-btn.ability-boost:active {
     background: #7a3d3d;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 1);
+  }
+  
+  .mobile-btn.ability-redirect {
+    background: #6a2d4a;
+    font-size: 16px;
+    padding: 12px 16px;
+    min-width: 80px;
+  }
+  
+  .mobile-btn.ability-redirect:active {
+    background: #7a3d5a;
+  }
+  
+  .mobile-controls-right {
+    display: flex;
+    align-items: center;
   }
   
   @media (max-width: 768px) {
@@ -295,6 +295,51 @@
     
     body {
       padding: 10px;
+    }
+  }
+  
+  /* Landscape orientation for mobile */
+  @media (max-width: 768px) and (orientation: landscape) {
+    .mobile-controls.mobile-active {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      flex-direction: row;
+      padding: 5px;
+      background: transparent;
+      border: none;
+      pointer-events: none;
+      justify-content: space-between;
+    }
+    
+    .mobile-controls-left,
+    .mobile-controls-right {
+      pointer-events: auto;
+      position: relative;
+    }
+    
+    .mobile-controls-left {
+      position: fixed;
+      left: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    .mobile-controls-right {
+      position: fixed;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    canvas {
+      max-width: calc(100% - 180px);
+      max-height: 100vh;
+      margin: 0 auto;
+      display: block;
+      width: auto;
+      height: auto;
     }
   }
   </style>
@@ -386,52 +431,33 @@
 
 <!-- Mobile Controls -->
 <div id="mobileControls" class="mobile-controls">
-  <!-- Player 1 Controls -->
-  <div class="mobile-control-row">
-    <div class="mobile-control-group">
-      <label>P1 Up</label>
+  <!-- Player Controls (left side) -->
+  <div class="mobile-controls-left" id="playerControlsLeft">
+    <div class="mobile-direction-buttons">
       <button class="mobile-btn" id="p1Up" ontouchstart="handleMobileTouch('p1Up', true)" ontouchend="handleMobileTouch('p1Up', false)">↑</button>
-    </div>
-    <div class="mobile-control-group">
-      <label>P1 Down</label>
       <button class="mobile-btn" id="p1Down" ontouchstart="handleMobileTouch('p1Down', true)" ontouchend="handleMobileTouch('p1Down', false)">↓</button>
     </div>
-    <div class="mobile-control-group">
-      <label>P1 Slow</label>
-      <button class="mobile-btn ability-btn ability-slow" id="p1Slow" ontouchstart="handleMobileAbility('p1Slow')">A</button>
-    </div>
-    <div class="mobile-control-group">
-      <label>P1 Boost</label>
-      <button class="mobile-btn ability-btn ability-boost" id="p1Boost" ontouchstart="handleMobileAbility('p1Boost')">D</button>
-    </div>
-    <div class="mobile-control-group">
-      <label>P1 Redirect</label>
-      <button class="mobile-btn ability-btn ability-redirect" id="p1Redirect" ontouchstart="handleMobileAbility('p1Redirect')">E</button>
-    </div>
+    <button class="mobile-btn ability-slow" id="p1Slow" ontouchstart="handleMobileAbility('p1Slow')">⏱</button>
+    <button class="mobile-btn ability-boost" id="p1Boost" ontouchstart="handleMobileAbility('p1Boost')">⚡</button>
   </div>
   
-  <!-- Player 2 Controls -->
-  <div class="mobile-control-row" id="p2ControlsRow">
-    <div class="mobile-control-group">
-      <label>P2 Up</label>
+  <!-- Redirect button (right side) -->
+  <div class="mobile-controls-right">
+    <button class="mobile-btn ability-redirect" id="p1Redirect" ontouchstart="handleMobileAbility('p1Redirect')">Redirect</button>
+  </div>
+  
+  <!-- Player 2 Controls (hidden by default, shown only in 2-player mode) -->
+  <div class="mobile-controls-left" id="playerControlsRight" style="display: none;">
+    <div class="mobile-direction-buttons">
       <button class="mobile-btn" id="p2Up" ontouchstart="handleMobileTouch('p2Up', true)" ontouchend="handleMobileTouch('p2Up', false)">↑</button>
-    </div>
-    <div class="mobile-control-group">
-      <label>P2 Down</label>
       <button class="mobile-btn" id="p2Down" ontouchstart="handleMobileTouch('p2Down', true)" ontouchend="handleMobileTouch('p2Down', false)">↓</button>
     </div>
-    <div class="mobile-control-group">
-      <label>P2 Slow</label>
-      <button class="mobile-btn ability-btn ability-slow" id="p2Slow" ontouchstart="handleMobileAbility('p2Slow')">←</button>
-    </div>
-    <div class="mobile-control-group">
-      <label>P2 Boost</label>
-      <button class="mobile-btn ability-btn ability-boost" id="p2Boost" ontouchstart="handleMobileAbility('p2Boost')">→</button>
-    </div>
-    <div class="mobile-control-group">
-      <label>P2 Redirect</label>
-      <button class="mobile-btn ability-btn ability-redirect" id="p2Redirect" ontouchstart="handleMobileAbility('p2Redirect')">Shift</button>
-    </div>
+    <button class="mobile-btn ability-slow" id="p2Slow" ontouchstart="handleMobileAbility('p2Slow')">⏱</button>
+    <button class="mobile-btn ability-boost" id="p2Boost" ontouchstart="handleMobileAbility('p2Boost')">⚡</button>
+  </div>
+  
+  <div class="mobile-controls-right" id="playerControlsRightRedirect" style="display: none;">
+    <button class="mobile-btn ability-redirect" id="p2Redirect" ontouchstart="handleMobileAbility('p2Redirect')">Redirect</button>
   </div>
 </div>
 
@@ -451,7 +477,9 @@ function isMobileDevice() {
 
 const isMobile = isMobileDevice();
 const mobileControls = document.getElementById('mobileControls');
-const p2ControlsRow = document.getElementById('p2ControlsRow');
+const playerControlsLeft = document.getElementById('playerControlsLeft');
+const playerControlsRight = document.getElementById('playerControlsRight');
+const playerControlsRightRedirect = document.getElementById('playerControlsRightRedirect');
 
 // Show/hide mobile controls based on device
 if (isMobile) {
@@ -474,13 +502,16 @@ function handleMobileTouch(control, isPressed) {
   mobileTouchState[control] = isPressed;
   
   // Update paddle movement based on touch state
-  if (control === 'p1Up') {
+  const canControlLeft = !onlineMode || (onlineMode && playerSide === 'left');
+  const canControlRight = !onlineMode || (onlineMode && playerSide === 'right');
+  
+  if (control === 'p1Up' && canControlLeft) {
     leftPaddle.dy = isPressed ? -paddleSpeed : (mobileTouchState.p1Down ? paddleSpeed : 0);
-  } else if (control === 'p1Down') {
+  } else if (control === 'p1Down' && canControlLeft) {
     leftPaddle.dy = isPressed ? paddleSpeed : (mobileTouchState.p1Up ? -paddleSpeed : 0);
-  } else if (control === 'p2Up' && !aiMode) {
+  } else if (control === 'p2Up' && !aiMode && canControlRight) {
     rightPaddle.dy = isPressed ? -paddleSpeed : (mobileTouchState.p2Down ? paddleSpeed : 0);
-  } else if (control === 'p2Down' && !aiMode) {
+  } else if (control === 'p2Down' && !aiMode && canControlRight) {
     rightPaddle.dy = isPressed ? paddleSpeed : (mobileTouchState.p2Up ? -paddleSpeed : 0);
   }
 }
@@ -488,25 +519,65 @@ function handleMobileTouch(control, isPressed) {
 function handleMobileAbility(ability) {
   if (gameOver) return;
   
-  if (ability === 'p1Slow') {
+  const canControlLeft = !onlineMode || (onlineMode && playerSide === 'left');
+  const canControlRight = !onlineMode || (onlineMode && playerSide === 'right');
+  
+  if (ability === 'p1Slow' && canControlLeft) {
     activateSlowAbility('player1');
-  } else if (ability === 'p1Boost') {
+  } else if (ability === 'p1Boost' && canControlLeft) {
     activateSpeedBoostAbility('player1');
-  } else if (ability === 'p1Redirect') {
+  } else if (ability === 'p1Redirect' && canControlLeft) {
     activateRedirectAbility('player1');
-  } else if (ability === 'p2Slow' && !aiMode) {
+  } else if (ability === 'p2Slow' && !aiMode && canControlRight) {
     activateSlowAbility('player2');
-  } else if (ability === 'p2Boost' && !aiMode) {
+  } else if (ability === 'p2Boost' && !aiMode && canControlRight) {
     activateSpeedBoostAbility('player2');
-  } else if (ability === 'p2Redirect' && !aiMode) {
+  } else if (ability === 'p2Redirect' && !aiMode && canControlRight) {
     activateRedirectAbility('player2');
   }
 }
 
-// Hide P2 controls in AI mode
+// Update mobile controls visibility based on game mode
 function updateMobileControlsVisibility() {
-  if (p2ControlsRow) {
-    p2ControlsRow.style.display = aiMode ? 'none' : 'flex';
+  if (!isMobile || !mobileControls) return;
+  
+  const p1RedirectBtn = document.getElementById('p1Redirect');
+  const p1RedirectContainer = p1RedirectBtn ? p1RedirectBtn.parentElement : null;
+  
+  // In online mode, show only the controls for the current player
+  if (onlineMode) {
+    if (playerSide === 'left') {
+      // Show Player 1 controls (left side)
+      if (playerControlsLeft) playerControlsLeft.style.display = 'flex';
+      if (playerControlsRight) playerControlsRight.style.display = 'none';
+      if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
+      if (p1RedirectContainer) p1RedirectContainer.style.display = 'flex';
+    } else if (playerSide === 'right') {
+      // Show Player 2 controls (right side)
+      if (playerControlsLeft) playerControlsLeft.style.display = 'none';
+      if (playerControlsRight) playerControlsRight.style.display = 'flex';
+      if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'flex';
+      if (p1RedirectContainer) p1RedirectContainer.style.display = 'none';
+    } else {
+      // Not matched yet, hide all
+      if (playerControlsLeft) playerControlsLeft.style.display = 'none';
+      if (playerControlsRight) playerControlsRight.style.display = 'none';
+      if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
+      if (p1RedirectContainer) p1RedirectContainer.style.display = 'none';
+    }
+  } else if (aiMode) {
+    // AI mode: show only Player 1 controls
+    if (playerControlsLeft) playerControlsLeft.style.display = 'flex';
+    if (playerControlsRight) playerControlsRight.style.display = 'none';
+    if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
+    if (p1RedirectContainer) p1RedirectContainer.style.display = 'flex';
+  } else {
+    // 2-player mode: show only Player 1 controls (mobile is single player)
+    // For true 2-player on mobile, would need split screen, but for now show P1
+    if (playerControlsLeft) playerControlsLeft.style.display = 'flex';
+    if (playerControlsRight) playerControlsRight.style.display = 'none';
+    if (playerControlsRightRedirect) playerControlsRightRedirect.style.display = 'none';
+    if (p1RedirectContainer) p1RedirectContainer.style.display = 'flex';
   }
 }
 // Audio offset to skip silence at the start (adjust this value if sound timing is off)
@@ -589,6 +660,9 @@ function initSocket() {
       document.getElementById('findMatchBtn').style.display = 'none';
       document.getElementById('cancelMatchBtn').style.display = 'none';
       
+      // Update mobile controls visibility for online mode
+      updateMobileControlsVisibility();
+      
       // Reset game state for online match
       restartGame();
       
@@ -598,7 +672,13 @@ function initSocket() {
     });
 
     socket.on('opponentLeft', () => {
-      updateMatchmakingStatus('Opponent disconnected. Waiting for reconnection...', '#ffaa00');
+      if (onlineMode && !gameOver) {
+        // Opponent disconnected - you win by default
+        showWinPopup('You Win!');
+        updateMatchmakingStatus('Opponent disconnected. You win!', '#00ff00');
+      } else {
+        updateMatchmakingStatus('Opponent disconnected. Waiting for reconnection...', '#ffaa00');
+      }
     });
 
     socket.on('gameState', (state) => {
@@ -1342,17 +1422,25 @@ function handleScore(player) {
 
 // Check win condition based on game mode
 function checkWinCondition() {
-  if (gameMode === 'standard' || gameMode === 'ai') {
-    // Standard/AI mode: first to 10 wins
+  if (gameMode === 'standard' || gameMode === 'ai' || gameMode === 'online') {
+    // Standard/AI/Online mode: first to 10 wins
     if (scores.left >= 10) {
       if (gameMode === 'ai') {
         showWinPopup('You Win!');
+      } else if (gameMode === 'online') {
+        // Online mode: show winner based on player side
+        const winner = playerSide === 'left' ? 'You Win!' : 'Opponent Wins!';
+        showWinPopup(winner);
       } else {
         showWinPopup('Player 1');
       }
     } else if (scores.right >= 10) {
       if (gameMode === 'ai') {
         showWinPopup('AI Wins!');
+      } else if (gameMode === 'online') {
+        // Online mode: show winner based on player side
+        const winner = playerSide === 'right' ? 'You Win!' : 'Opponent Wins!';
+        showWinPopup(winner);
       } else {
         showWinPopup('Player 2');
       }
