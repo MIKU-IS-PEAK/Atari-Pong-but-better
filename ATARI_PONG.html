@@ -334,7 +334,7 @@
     }
     
     canvas {
-      max-width: calc(100% - 180px);
+      max-width: calc(100% - 140px);
       max-height: 100vh;
       margin: 0 auto;
       display: block;
@@ -674,7 +674,7 @@ function initSocket() {
     socket.on('opponentLeft', () => {
       if (onlineMode && !gameOver) {
         // Opponent disconnected - you win by default
-        showWinPopup('You Win!');
+        showWinPopup('You Win - Opponent Disconnected');
         updateMatchmakingStatus('Opponent disconnected. You win!', '#00ff00');
       } else {
         updateMatchmakingStatus('Opponent disconnected. Waiting for reconnection...', '#ffaa00');
@@ -1540,8 +1540,31 @@ function restartGame() {
   abilities.player2.redirectActive = false;
   abilities.player2.redirectCooldown = 0;
   abilities.player2.redirectFlashTime = 0;
+  
+  // Reset ball speed boost
   ballSpeedBoost.active = false;
   ballSpeedBoost.appliedBy = null;
+  
+  // Reset online mode state if in online mode (to allow finding new match)
+  if (gameMode === 'online') {
+    // Don't disconnect socket, just reset the game state
+    roomId = null;
+    playerSide = null;
+    isHost = false;
+    isInQueue = false;
+    onlineMode = false; // Reset online mode flag
+    
+    // Reset matchmaking UI to initial state
+    document.getElementById('findMatchBtn').style.display = 'inline-block';
+    document.getElementById('cancelMatchBtn').style.display = 'none';
+    updateMatchmakingStatus('', '');
+    // Update connection status based on actual socket state
+    if (socket && isConnected) {
+      updateConnectionStatus('Connected', '#00ff00');
+    } else {
+      updateConnectionStatus('Disconnected', '#888');
+    }
+  }
 }
 
 // Activate ability for a player
@@ -2269,6 +2292,16 @@ function loop() {
   context.font = 'bold 36px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
   context.textAlign = 'center';
   
+  // Online mode: Display "You are Player #" at the top
+  if (onlineMode && playerSide) {
+    context.fillStyle = '#ffff00';
+    context.font = 'bold 24px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+    const playerNumber = playerSide === 'left' ? '1' : '2';
+    context.fillText('You are Player ' + playerNumber, canvas.width / 2, 25);
+    context.fillStyle = 'white';
+    context.font = 'bold 36px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
+  }
+  
   // Player 1 (left)
   context.fillText('Player 1', canvas.width / 4, 40);
   context.font = '48px "Comic Neue", "Comic Sans MS", "Math Sans", sans-serif';
@@ -2507,8 +2540,21 @@ if (isMobile) {
   resizeCanvas();
 }
 
+// Handle tab visibility change - disconnect if tab becomes hidden during online game
+document.addEventListener('visibilitychange', function() {
+  // If tab becomes hidden and we're in an online game, disconnect
+  if (document.hidden && onlineMode && socket && isConnected) {
+    console.log('Tab hidden - disconnecting from online game');
+    socket.disconnect();
+    handleOnlineDisconnect();
+  }
+});
+
 // start the game
 requestAnimationFrame(loop);
+</script>
+</body>
+</html>
 </script>
 </body>
 </html>
