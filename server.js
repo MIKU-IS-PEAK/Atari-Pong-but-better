@@ -15,6 +15,11 @@ const io = new Server(server, {
 // Serve static files from the same directory
 app.use(express.static(path.join(__dirname)));
 
+// Route for root path - serve the game
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'ATARI_PONG.html'));
+});
+
 // Matchmaking queue
 const matchmakingQueue = [];
 
@@ -252,4 +257,5 @@ server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Open http://localhost:${PORT}/ATARI_PONG.html to play`);
 });
+
 
